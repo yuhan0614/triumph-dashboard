@@ -134,14 +134,31 @@ def api_ad_urls():
     return jsonify({"data": result, "count": len(result), "cached": False})
 
 
+def _fetch_fresh_thumb(name, token):
+    """Re-fetch thumbnail_url for a single ad from Meta API."""
+    from meta_api import BASE_URL
+    r = http_requests.get(
+        f"{BASE_URL}/act_{META_ACCOUNT}/ads",
+        params={"access_token": token, "fields": "name,creative{thumbnail_url}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
+        timeout=10
+    )
+    data = r.json()
+    for ad in data.get("data", []):
+        creative = ad.get("creative") or {}
+        t = creative.get("thumbnail_url")
+        if t:
+            return t
+    return None
+
+
 @app.route("/api/thumb")
 def api_thumb():
+    import hashlib
+    from flask import Response
     name = request.args.get("name", "")
     if not name:
         return jsonify({"error": "missing name"}), 400
 
-    import hashlib
-    from flask import Response
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
     safe = hashlib.md5(name.encode()).hexdigest()
@@ -151,22 +168,38 @@ def api_thumb():
         with open(cache_file, "rb") as f:
             return Response(f.read(), mimetype="image/jpeg")
 
-    # look up thumb URL from ad_urls cache
     cached = read_cache(f"ad_urls_{META_ACCOUNT}")
-    if not cached:
-        return jsonify({"error": "no cache"}), 404
-    info = cached.get("data", {}).get(name)
-    if not info or not info.get("thumb"):
-        return jsonify({"error": "not found"}), 404
+    thumb_url = (cached.get("data", {}).get(name) or {}).get("thumb") if cached else None
 
-    try:
-        r = http_requests.get(info["thumb"], timeout=10)
-        r.raise_for_status()
-        with open(cache_file, "wb") as f:
-            f.write(r.content)
-        return Response(r.content, mimetype=r.headers.get("Content-Type", "image/jpeg"))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
+    token = os.environ.get("META_ACCESS_TOKEN")
+
+    # try cached URL first; if expired (403/4xx), re-fetch fresh
+    if thumb_url:
+        try:
+            r = http_requests.get(thumb_url, timeout=10)
+            if r.status_code == 200:
+                img = r.content
+                with open(cache_file, "wb") as f:
+                    f.write(img)
+                return Response(img, mimetype=r.headers.get("Content-Type", "image/jpeg"))
+        except Exception:
+            pass
+
+    # expired or missing — fetch fresh from Meta API
+    if token:
+        fresh = _fetch_fresh_thumb(name, token)
+        if fresh:
+            try:
+                r = http_requests.get(fresh, timeout=10)
+                if r.status_code == 200:
+                    img = r.content
+                    with open(cache_file, "wb") as f:
+                        f.write(img)
+                    return Response(img, mimetype=r.headers.get("Content-Type", "image/jpeg"))
+            except Exception:
+                pass
+
+    return jsonify({"error": "not found"}), 404
 
 
 @app.route("/api/creative_img")
