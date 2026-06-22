@@ -1363,10 +1363,15 @@ function renderCreativeTable() {
     const roas    = v.spend        > 0 ? v.purchase_value / v.spend : 0;
     const vpt     = v.purchase     > 0 ? v.purchase_value / v.purchase : 0;
     const localUrl = primaryFlight ? `${base}/api/creative_img?flight=${primaryFlight}&column=${encodeURIComponent(v.name)}` : null;
-    const fallback = v.thumb ? `this.src='${v.thumb}';this.onerror=null;` : `this.parentElement.innerHTML='-';this.onerror=null;`;
-    const imgSrc = localUrl || v.thumb || '';
+    const fallbackSrc = v.thumb || '';
+    const imgSrc = localUrl || fallbackSrc;
+    const onerror = localUrl && fallbackSrc
+      ? `this.src='${fallbackSrc}';this.onerror=null;`
+      : `this.style.display='none';this.onerror=null;`;
     const thumbHtml = imgSrc
-      ? `<div style="width:130px;height:130px;border-radius:8px;background-image:url('${imgSrc}');background-size:cover;background-position:center top;background-repeat:no-repeat;"></div>`
+      ? `<div style="width:130px;height:130px;overflow:hidden;border-radius:8px;display:inline-block;flex-shrink:0;">
+           <img src="${imgSrc}" style="width:130px!important;height:130px!important;object-fit:cover;display:block;" onerror="${onerror}">
+         </div>`
       : '-';
     return `<tr>
       <td style="text-align:center;vertical-align:middle;padding:4px 2px;position:sticky;left:0;z-index:1;background:#fff!important;">${thumbHtml}</td>
