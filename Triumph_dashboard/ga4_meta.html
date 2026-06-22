@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triumph Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+body{background:#f4f6fb;font-size:13px;}
+.card{border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.metric-card{min-height:90px;display:flex;flex-direction:column;justify-content:center;}
+.metric-card .val{font-size:17px;font-weight:700;color:#1a1a2e;white-space:nowrap;}
+.metric-card .chg{font-size:12px;margin-top:2px;min-height:18px;}
+.metric-card .lbl{font-size:11px;color:#999;margin-bottom:4px;}
+.period-tab{display:inline-block;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;color:#666;border:1.5px solid #ddd;margin-right:6px;transition:.15s;}
+.period-tab.active{background:#4f8ef7;color:#fff;border-color:#4f8ef7;}
+.section-tab{display:inline-block;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;color:#888;border-bottom:2px solid transparent;}
+.section-tab.active{color:#4f8ef7;border-bottom-color:#4f8ef7;}
+th{cursor:pointer;user-select:none;white-space:nowrap;background:#f8f9fa;position:sticky;top:0;font-weight:600;font-size:12px;z-index:2;}
+th:first-child{left:0;z-index:3;}
+th:hover{background:#e8f0fe;}
+th.asc::after{content:" ▲";font-size:9px;color:#4f8ef7;}
+th.desc::after{content:" ▼";font-size:9px;color:#4f8ef7;}
+td{white-space:nowrap;font-size:12px;}
+td:first-child{position:sticky;left:0;background:#fff;z-index:1;}
+tr:hover td:first-child{background:#f5f5f5;}
+.num{text-align:center;}
+th.num{text-align:center;}
+.tw th:not(:first-child),.tw td:not(:first-child){text-align:center;}
+.tw{max-height:400px;overflow-y:auto;overflow-x:auto;}
+.tw table{table-layout:fixed;min-width:700px;}
+.tw th,.tw td{overflow:hidden;text-overflow:ellipsis;}
+.col-name{width:280px;} .creative-name{width:160px;}
+.tw td:first-child{white-space:normal;word-break:break-all;}
+.col-num{width:130px;}
+.col-share{width:110px;}
+.bar-fill{height:5px;border-radius:3px;background:linear-gradient(90deg,#4f8ef7,#7ab4ff);margin-top:2px;}
+input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;}
+.meta-loading{text-align:center;padding:40px;color:#999;font-size:13px;}
+.flight-tab{display:inline-block;padding:4px 12px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:600;color:#666;border:1.5px solid #ddd;margin:2px;transition:.15s;}
+.flight-tab.active{background:#4f8ef7;color:#fff;border-color:#4f8ef7;}
+</style>
+</head>
+<body>
+<div class="container-fluid py-4" style="max-width:1600px;">
+
+  <div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
+    <h5 class="mb-0 fw-bold">📈 Triumph Dashboard</h5>
+    <span class="text-muted" style="font-size:11px;">91商店 · Triumph TW · 2025/05/01 ～ 2026/06/18</span>
+  </div>
+
+  <!-- Period selector -->
+  <div class="card p-3 mb-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="period-tab active" onclick="setPeriod('7d',this)">近 7 天</span>
+      <span class="period-tab" onclick="setPeriod('mtd',this)">本月</span>
+      <span class="period-tab" onclick="setPeriod('custom',this)">自訂</span>
+      <div class="d-flex align-items-center gap-2 ms-2">
+        <input type="date" id="dtStart" onchange="applyCustom()">
+        <span class="text-muted">～</span>
+        <input type="date" id="dtEnd" onchange="applyCustom()">
+      </div>
+      <div class="ms-auto d-flex gap-1">
+        <span class="fw-semibold me-1" style="font-size:12px;line-height:32px;">分組</span>
+        <div class="btn-group btn-group-sm">
+          <input type="radio" class="btn-check" name="grp" id="grpD" value="D" checked>
+          <label class="btn btn-outline-secondary" for="grpD">日</label>
+          <input type="radio" class="btn-check" name="grp" id="grpW" value="W">
+          <label class="btn btn-outline-secondary" for="grpW">週</label>
+          <input type="radio" class="btn-check" name="grp" id="grpM" value="M">
+          <label class="btn btn-outline-secondary" for="grpM">月</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section tabs -->
+  <div class="border-bottom mb-3">
+    <span class="section-tab active" onclick="switchSection('overall',this)">GA4-整體</span>
+    <span class="section-tab" onclick="switchSection('ads',this)">GA4-廣告</span>
+    <span class="section-tab" onclick="switchSection('meta',this)">Meta 廣告</span>
+    <span class="section-tab" onclick="switchSection('metaCreative',this)">Meta 素材</span>
+    <span class="section-tab" onclick="switchSection('crossMedia',this)">GA4X媒體</span>
+  </div>
+
+  <!-- ── 整體 ── -->
+  <div id="secOverall">
+    <div class="row g-3 mb-3" id="trafficMetrics"></div>
+
+    <div class="card p-3 mb-3">
+      <div class="d-flex align-items-center mb-2 gap-2 flex-wrap">
+        <span class="fw-semibold" style="font-size:12px;">趨勢</span>
+        <div class="btn-group btn-group-sm ms-auto">
+          <input type="radio" class="btn-check" name="tm" id="tmS" value="Sessions" checked>
+          <label class="btn btn-outline-secondary" for="tmS">工作階段</label>
+          <input type="radio" class="btn-check" name="tm" id="tmU" value="Total users">
+          <label class="btn btn-outline-secondary" for="tmU">使用者</label>
+          <input type="radio" class="btn-check" name="tm" id="tmR" value="Total revenue">
+          <label class="btn btn-outline-secondary" for="tmR">營收</label>
+          <input type="radio" class="btn-check" name="tm" id="tmP" value="Purchases">
+          <label class="btn btn-outline-secondary" for="tmP">購買</label>
+        </div>
+      </div>
+      <canvas id="trafficChart" height="75"></canvas>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">來源 / 媒介</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="srcTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('srcTable',0)">來源/媒介</th>
+            <th class="num col-num" onclick="sortT('srcTable',1)">工作階段</th>
+            <th class="num col-num" onclick="sortT('srcTable',2)">加入購物車</th>
+            <th class="num" style="width:80px" onclick="sortT('srcTable',3)">加車率</th>
+            <th class="num col-num" onclick="sortT('srcTable',4)">購買</th>
+            <th class="num" style="width:80px" onclick="sortT('srcTable',5)">購買率</th>
+            <th class="num col-num" onclick="sortT('srcTable',6)">營收</th>
+            <th class="num col-num" onclick="sortT('srcTable',7)">VPT</th>
+            <th class="col-share" onclick="sortT('srcTable',8)">營收佔比</th>
+          </tr></thead>
+          <tbody id="srcBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">品項排行</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="itemsTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('itemsTable',0)">品項</th>
+            <th class="num col-num" onclick="sortT('itemsTable',1)">瀏覽</th>
+            <th class="num col-num" onclick="sortT('itemsTable',2)">加入購物車</th>
+            <th class="num col-num" onclick="sortT('itemsTable',3)">購買數量</th>
+            <th class="num col-num" onclick="sortT('itemsTable',4)">營收</th>
+            <th class="col-share">佔比</th>
+          </tr></thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 廣告 (GA4) ── -->
+  <div id="secAds" style="display:none;">
+    <div class="row g-3 mb-3" id="adsMetrics"></div>
+
+    <div class="card p-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">來源 / 媒介</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="adsTable">
+          <thead><tr>
+            <th class="col-name">來源/媒介</th>
+            <th class="num col-num">工作階段</th>
+            <th class="num col-num">加入購物車</th>
+            <th class="num" style="width:80px">加車率</th>
+            <th class="num col-num">購買</th>
+            <th class="num" style="width:80px">購買率</th>
+            <th class="num col-num">營收</th>
+            <th class="num col-num">VPT</th>
+            <th class="col-share">營收佔比</th>
+          </tr></thead>
+          <tbody id="adsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-3 mt-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">廣告活動</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="campTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('campTable',0)">廣告活動</th>
+            <th class="num col-num" onclick="sortT('campTable',1)">工作階段</th>
+            <th class="num col-num" onclick="sortT('campTable',2)">加入購物車</th>
+            <th class="num" style="width:80px" onclick="sortT('campTable',3)">加車率</th>
+            <th class="num col-num" onclick="sortT('campTable',4)">購買</th>
+            <th class="num" style="width:80px" onclick="sortT('campTable',5)">購買率</th>
+            <th class="num col-num" onclick="sortT('campTable',6)">營收</th>
+            <th class="num col-num" onclick="sortT('campTable',7)">VPT</th>
+            <th class="col-share" onclick="sortT('campTable',8)">營收佔比</th>
+          </tr></thead>
+          <tbody id="campBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Meta 廣告 ── -->
+  <div id="secMeta" style="display:none;">
+    <div class="row g-3 mb-3" id="metaMetrics"></div>
+
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">每日趨勢</div>
+      <canvas id="metaChart" height="90"></canvas>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">每日明細</div>
+      <div class="tw" style="max-height:392px;">
+        <table class="table table-sm table-hover mb-0" id="metaDailyTable">
+          <thead><tr>
+            <th style="width:110px" onclick="sortT('metaDailyTable',0)">日期</th>
+            <th class="num" style="width:100px" onclick="sortT('metaDailyTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('metaDailyTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('metaDailyTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('metaDailyTable',4)">CTR</th>
+            <th class="num" style="width:90px" onclick="sortT('metaDailyTable',5)">CPC</th>
+            <th class="num" style="width:80px" onclick="sortT('metaDailyTable',6)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('metaDailyTable',7)">購買</th>
+            <th class="num" style="width:80px" onclick="sortT('metaDailyTable',8)">ROAS</th>
+            <th class="num col-num" onclick="sortT('metaDailyTable',9)">購買金額</th>
+          </tr></thead>
+          <tbody id="metaDailyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <div class="d-flex align-items-center mb-2">
+        <span class="fw-semibold" style="font-size:12px;">廣告活動</span>
+        <span id="metaUpdated" class="text-muted ms-2" style="font-size:11px;"></span>
+      </div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="metaCampTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('metaCampTable',0)">廣告活動</th>
+            <th class="num" style="width:100px" onclick="sortT('metaCampTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('metaCampTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('metaCampTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('metaCampTable',4)">CTR</th>
+            <th class="num" style="width:90px" onclick="sortT('metaCampTable',5)">CPC</th>
+            <th class="num" style="width:80px" onclick="sortT('metaCampTable',6)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('metaCampTable',7)">購買</th>
+            <th class="num" style="width:90px" onclick="sortT('metaCampTable',8)">CPP</th>
+            <th class="num" style="width:80px" onclick="sortT('metaCampTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('metaCampTable',10)">購買金額</th>
+          </tr></thead>
+          <tbody id="metaCampBody"><tr><td colspan="11" class="meta-loading">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NU vs RU 對比 -->
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">NU / RU 成效對比</div>
+      <div class="tw" style="max-height:none;">
+        <table class="table table-sm table-hover mb-0" id="nuRuTable">
+          <thead><tr>
+            <th style="width:80px" onclick="sortT('nuRuTable',0)">群組</th>
+            <th class="num" style="width:100px" onclick="sortT('nuRuTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('nuRuTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('nuRuTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('nuRuTable',4)">CTR</th>
+            <th class="num" style="width:90px" onclick="sortT('nuRuTable',5)">CPC</th>
+            <th class="num" style="width:80px" onclick="sortT('nuRuTable',6)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('nuRuTable',7)">購買</th>
+            <th class="num" style="width:90px" onclick="sortT('nuRuTable',8)">CPP</th>
+            <th class="num" style="width:80px" onclick="sortT('nuRuTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('nuRuTable',10)">購買金額</th>
+          </tr></thead>
+          <tbody id="nuRuBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 廣告受眾：Triumph -->
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">廣告受眾 — Triumph</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="audTriumphTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('audTriumphTable',0)">廣告組合</th>
+            <th class="num" style="width:100px" onclick="sortT('audTriumphTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('audTriumphTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('audTriumphTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('audTriumphTable',4)">CTR</th>
+            <th class="num" style="width:90px" onclick="sortT('audTriumphTable',5)">CPC</th>
+            <th class="num" style="width:80px" onclick="sortT('audTriumphTable',6)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('audTriumphTable',7)">購買</th>
+            <th class="num" style="width:90px" onclick="sortT('audTriumphTable',8)">CPP</th>
+            <th class="num" style="width:80px" onclick="sortT('audTriumphTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('audTriumphTable',10)">購買金額</th>
+          </tr></thead>
+          <tbody id="audTriumphBody"><tr><td colspan="11" class="meta-loading">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 廣告受眾：sloggi -->
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">廣告受眾 — sloggi</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="audSloggiTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('audSloggiTable',0)">廣告組合</th>
+            <th class="num" style="width:100px" onclick="sortT('audSloggiTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('audSloggiTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('audSloggiTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('audSloggiTable',4)">CTR</th>
+            <th class="num" style="width:90px" onclick="sortT('audSloggiTable',5)">CPC</th>
+            <th class="num" style="width:80px" onclick="sortT('audSloggiTable',6)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('audSloggiTable',7)">購買</th>
+            <th class="num" style="width:90px" onclick="sortT('audSloggiTable',8)">CPP</th>
+            <th class="num" style="width:80px" onclick="sortT('audSloggiTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('audSloggiTable',10)">購買金額</th>
+          </tr></thead>
+          <tbody id="audSloggiBody"><tr><td colspan="11" class="meta-loading">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 年齡表格 -->
+    <div class="card p-3 mb-3" id="ageTableCard" style="display:none;">
+      <div class="fw-semibold mb-2" style="font-size:12px;">年齡分佈</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="ageTable">
+          <thead><tr>
+            <th style="width:100px" onclick="sortT('ageTable',0)">年齡</th>
+            <th class="num" style="width:100px" onclick="sortT('ageTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('ageTable',2)">曝光</th>
+            <th class="num" style="width:90px" onclick="sortT('ageTable',3)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('ageTable',4)">CTR</th>
+            <th class="num" style="width:80px" onclick="sortT('ageTable',5)">加車</th>
+            <th class="num" style="width:80px" onclick="sortT('ageTable',6)">購買</th>
+            <th class="num" style="width:80px" onclick="sortT('ageTable',7)">ROAS</th>
+            <th class="num col-num" onclick="sortT('ageTable',8)">購買金額</th>
+            <th class="col-share" onclick="sortT('ageTable',9)">花費佔比</th>
+            <th class="col-share" onclick="sortT('ageTable',10)">營收佔比</th>
+          </tr></thead>
+          <tbody id="ageBody"><tr><td colspan="10" class="meta-loading">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 年齡圓餅圖 -->
+    <div class="row g-3 mb-3" id="agePieRow" style="display:none;">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="fw-semibold mb-2" style="font-size:12px;">花費（依年齡）</div>
+          <div style="max-width:320px;margin:0 auto;">
+            <canvas id="pieSpend"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="fw-semibold mb-2" style="font-size:12px;">購買金額（依年齡）</div>
+          <div style="max-width:320px;margin:0 auto;">
+            <canvas id="pieRevenue"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Meta 素材 ── -->
+  <div id="secMetaCreative" style="display:none;">
+    <div class="card p-3 mb-3">
+      <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+        <span class="fw-semibold" style="font-size:12px;">走期篩選</span>
+        <span style="font-size:11px;color:#999;">可多選</span>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" style="font-size:11px;" onclick="toggleAllFlights()">全選／清除</button>
+      </div>
+      <div id="flightTabs" class="d-flex flex-wrap"></div>
+    </div>
+
+    <div class="row g-3 mb-3" id="creativeMetrics"></div>
+
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">Triumph 素材</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="creativeTriumphTable">
+          <thead><tr>
+            <th style="width:136px;padding:4px;position:sticky;left:0;z-index:2;background:#fff!important;">縮圖</th>
+            <th class="creative-name" style="position:sticky;left:136px;z-index:2;background:#fff!important;box-shadow:2px 0 4px rgba(0,0,0,0.08);" onclick="sortT('creativeTriumphTable',1)">素材名稱</th>
+            <th class="num" style="width:90px" onclick="sortT('creativeTriumphTable',2)">花費</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',3)">曝光</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',4)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',5)">CTR</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',6)">CPLC</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',7)">CVR</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',8)">ATC</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',9)">CPA-ATC</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',10)">Purchase</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',11)">CPP</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',12)">購買率</th>
+            <th class="num" style="width:90px" onclick="sortT('creativeTriumphTable',13)">Revenue</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeTriumphTable',14)">ROAS</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeTriumphTable',15)">VPT客單價</th>
+          </tr></thead>
+          <tbody id="creativeTriumphBody"><tr><td colspan="16" class="meta-loading">請選擇時間範圍後切換至此分頁</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card p-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">sloggi 素材</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="creativeSloggiTable">
+          <thead><tr>
+            <th style="width:136px;padding:4px;position:sticky;left:0;z-index:2;background:#fff!important;">縮圖</th>
+            <th class="creative-name" style="position:sticky;left:136px;z-index:2;background:#fff!important;box-shadow:2px 0 4px rgba(0,0,0,0.08);" onclick="sortT('creativeSloggiTable',1)">素材名稱</th>
+            <th class="num" style="width:90px" onclick="sortT('creativeSloggiTable',2)">花費</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',3)">曝光</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',4)">連結點擊</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',5)">CTR</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',6)">CPLC</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',7)">CVR</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',8)">ATC</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',9)">CPA-ATC</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',10)">Purchase</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',11)">CPP</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',12)">購買率</th>
+            <th class="num" style="width:90px" onclick="sortT('creativeSloggiTable',13)">Revenue</th>
+            <th class="num" style="width:70px" onclick="sortT('creativeSloggiTable',14)">ROAS</th>
+            <th class="num" style="width:80px" onclick="sortT('creativeSloggiTable',15)">VPT客單價</th>
+          </tr></thead>
+          <tbody id="creativeSloggiBody"><tr><td colspan="16" class="meta-loading">請選擇時間範圍後切換至此分頁</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GA4X媒體 ── -->
+  <div id="secCrossMedia" style="display:none;">
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">Meta by 廣告活動</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="crossMetaTable" style="table-layout:auto;">
+          <thead>
+            <tr>
+              <th rowspan="2" style="position:sticky;left:0;z-index:2;background:#fff!important;vertical-align:middle;white-space:nowrap;min-width:200px;">廣告活動</th>
+              <th colspan="6" class="text-center" style="background:#fff3e0;border-bottom:1px solid #ddd;">Meta 後台</th>
+              <th colspan="6" class="text-center" style="background:#e8f5e9;border-bottom:1px solid #ddd;">GA4</th>
+            </tr>
+            <tr>
+              <th class="num" style="width:90px;background:#fff3e0;">花費</th>
+              <th class="num" style="width:80px;background:#fff3e0;">連結點擊</th>
+              <th class="num" style="width:70px;background:#fff3e0;">購買</th>
+              <th class="num" style="width:80px;background:#fff3e0;">CPA</th>
+              <th class="num" style="width:90px;background:#fff3e0;">營收</th>
+              <th class="num" style="width:70px;background:#fff3e0;">ROAS</th>
+              <th class="num" style="width:80px;background:#e8f5e9;">工作階段</th>
+              <th class="num" style="width:70px;background:#e8f5e9;">購買</th>
+              <th class="num" style="width:80px;background:#e8f5e9;">CPA</th>
+              <th class="num" style="width:90px;background:#e8f5e9;">營收</th>
+              <th class="num" style="width:70px;background:#e8f5e9;">ROAS</th>
+              <th class="num" style="width:70px;background:#e8f5e9;">CVR</th>
+            </tr>
+          </thead>
+          <tbody id="crossMetaBody"><tr><td colspan="13" class="meta-loading">請選擇時間範圍後切換至此分頁</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let DATA = null;
+let META_CAMP = null;
+let META_TREND = null;
+
+const toDate = s => new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8));
+const toStr  = d => d.toISOString().slice(0,10).replace(/-/g,'');
+const toApiDate = s => s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+const _now = new Date();
+const todayStr = _now.getFullYear().toString() + String(_now.getMonth()+1).padStart(2,'0') + String(_now.getDate()).padStart(2,'0');
+const today = toDate(todayStr);
+
+let period = '7d', grp = 'D', currentSection = 'overall';
+let cStart = null, cEnd = null;
+let charts = {};
+let sortState = {};
+
+function getRange() {
+  if (period === '7d') {
+    const s = new Date(today); s.setDate(today.getDate()-6);
+    return [toStr(s), todayStr];
+  }
+  if (period === 'mtd') {
+    const s = todayStr.slice(0,6)+'01';
+    return [s, todayStr];
+  }
+  return [cStart || '20250501', cEnd || todayStr];
+}
+
+function inRange(d, s, e) { return d >= s && d <= e; }
+
+function groupKey(dateStr) {
+  if (grp === 'M') return dateStr.slice(0,6);
+  if (grp === 'W') {
+    const d = toDate(dateStr);
+    const mon = new Date(d);
+    const dow = d.getDay() || 7;
+    mon.setDate(d.getDate() - dow + 1);
+    return toStr(mon);
+  }
+  return dateStr;
+}
+function groupLabel(k) {
+  if (grp === 'M') return k.slice(0,4)+'/'+k.slice(4,6);
+  return k.slice(0,4)+'/'+k.slice(4,6)+'/'+k.slice(6,8);
+}
+
+function aggDim(byDim, metrics, start, end) {
+  const result = {};
+  Object.entries(byDim).forEach(([dim, dates]) => {
+    const t = {}; metrics.forEach(m => t[m] = 0);
+    Object.entries(dates).forEach(([d, v]) => {
+      if (inRange(d, start, end)) metrics.forEach(m => t[m] += (v[m] || 0));
+    });
+    if (metrics.some(m => t[m] > 0)) result[dim] = t;
+  });
+  return result;
+}
+
+function aggDaily(daily, metrics, start, end) {
+  const map = {};
+  Object.entries(daily).forEach(([d, v]) => {
+    if (!inRange(d, start, end)) return;
+    const k = groupKey(d);
+    if (!map[k]) { map[k] = {}; metrics.forEach(m => map[k][m] = 0); }
+    metrics.forEach(m => map[k][m] += (v[m] || 0));
+  });
+  return map;
+}
+
+function getPrevRange(s, e) {
+  const sd = toDate(s), ed = toDate(e);
+  const days = Math.round((ed - sd) / 86400000) + 1;
+  const pe = new Date(sd); pe.setDate(pe.getDate() - 1);
+  const ps = new Date(pe); ps.setDate(pe.getDate() - days + 1);
+  return [toStr(ps), toStr(pe)];
+}
+function fmtPp(cur, prev) {
+  if (!prev && prev !== 0) return '';
+  const diff = cur - prev;
+  if (Math.abs(diff) < 0.05) return '';
+  const sign = diff >= 0 ? '+' : '';
+  const color = diff >= 0 ? '#28a745' : '#dc3545';
+  return `<span style="font-size:10px;color:${color};margin-left:4px;">${sign}${diff.toFixed(1)}pp</span>`;
+}
+function fmtChg(cur, prev) {
+  if (!prev) return '';
+  const pct = (cur - prev) / prev * 100;
+  const sign = pct >= 0 ? '+' : '';
+  const color = pct >= 0 ? '#28a745' : '#dc3545';
+  return `<span style="font-size:11px;color:${color};margin-left:6px;">${sign}${pct.toFixed(1)}%</span>`;
+}
+function sumRange(daily, metrics, s, e) {
+  const t = {}; metrics.forEach(m => t[m] = 0);
+  Object.entries(daily).forEach(([d, v]) => {
+    if (inRange(d, s, e)) metrics.forEach(m => t[m] += (v[m] || 0));
+  });
+  return t;
+}
+
+const ADS_SOURCES = ['google / cpc', 'FacebookWM / soc'];
+
+function render() {
+  if (!DATA) return;
+  const [s, e] = getRange();
+  renderTraffic(s, e);
+  renderItems(s, e);
+  renderAds(s, e);
+}
+
+function renderAds(s, e) {
+  const [ps, pe] = getPrevRange(s, e);
+  const cur = {}, prev = {};
+  TMETRICS.forEach(m => { cur[m] = 0; prev[m] = 0; });
+
+  ADS_SOURCES.forEach(src => {
+    const dates = DATA.by_src[src];
+    if (!dates) return;
+    Object.entries(dates).forEach(([d, v]) => {
+      if (inRange(d, s, e)) TMETRICS.forEach(m => cur[m] += (v[m] || 0));
+      if (inRange(d, ps, pe)) TMETRICS.forEach(m => prev[m] += (v[m] || 0));
+    });
+  });
+
+  document.getElementById('adsMetrics').innerHTML = [
+    {lbl:'工作階段',key:'Sessions',fmt:fmtN},
+    {lbl:'使用者',key:'Total users',fmt:fmtN},
+    {lbl:'購買',key:'Purchases',fmt:fmtN},
+    {lbl:'營收',key:'Total revenue',fmt:fmtM},
+    {lbl:'加入購物車',key:'Add to carts',fmt:fmtN},
+  ].map(c=>`<div class="col-6 col-md-4 col-xl-2">
+    <div class="card p-3 metric-card">
+      <div class="lbl">${c.lbl}</div>
+      <div class="val">${c.fmt(cur[c.key])} ${fmtChg(cur[c.key], prev[c.key])}</div>
+    </div></div>`).join('');
+
+  const totalRev = cur['Total revenue'] || 0;
+  const totalRevPrev = prev['Total revenue'] || 0;
+  document.getElementById('adsBody').innerHTML = ADS_SOURCES.map(src => {
+    const dates = DATA.by_src[src];
+    if (!dates) return '';
+    const cv = {}; const pv = {};
+    TMETRICS.forEach(m => { cv[m] = 0; pv[m] = 0; });
+    Object.entries(dates).forEach(([d, v]) => {
+      if (inRange(d, s, e)) TMETRICS.forEach(m => cv[m] += (v[m] || 0));
+      if (inRange(d, ps, pe)) TMETRICS.forEach(m => pv[m] += (v[m] || 0));
+    });
+    const pct = totalRev > 0 ? cv['Total revenue'] / totalRev * 100 : 0;
+    const pctPrev = totalRevPrev > 0 ? pv['Total revenue'] / totalRevPrev * 100 : 0;
+    const cartRate = cv['Sessions']>0 ? cv['Add to carts']/cv['Sessions']*100 : 0;
+    const cartRatePrev = (pv['Sessions']||0)>0 ? (pv['Add to carts']||0)/pv['Sessions']*100 : 0;
+    const buyRate = cv['Add to carts']>0 ? cv['Purchases']/cv['Add to carts']*100 : 0;
+    const buyRatePrev = (pv['Add to carts']||0)>0 ? (pv['Purchases']||0)/pv['Add to carts']*100 : 0;
+    const vpt = cv['Purchases']>0 ? cv['Total revenue']/cv['Purchases'] : 0;
+    const vptPrev = (pv['Purchases']||0)>0 ? (pv['Total revenue']||0)/pv['Purchases'] : 0;
+    return `<tr>
+      <td style="overflow:hidden;text-overflow:ellipsis">${src}</td>
+      <td class="num">${fmtN(cv['Sessions'])}${fmtChg(cv['Sessions'],pv['Sessions'])}</td>
+      <td class="num">${fmtN(cv['Add to carts'])}${fmtChg(cv['Add to carts'],pv['Add to carts'])}</td>
+      <td class="num">${cartRate.toFixed(1)}%${fmtPp(cartRate,cartRatePrev)}</td>
+      <td class="num">${fmtN(cv['Purchases'])}${fmtChg(cv['Purchases'],pv['Purchases'])}</td>
+      <td class="num">${buyRate.toFixed(1)}%${fmtPp(buyRate,buyRatePrev)}</td>
+      <td class="num">${fmtM(cv['Total revenue'])}${fmtChg(cv['Total revenue'],pv['Total revenue'])}</td>
+      <td class="num">${vpt>0?fmtM(vpt):'-'}${vptPrev>0?fmtChg(vpt,vptPrev):''}</td>
+      <td><div class="bar-fill" style="width:${Math.min(pct*2,100)}%"></div>
+          <span style="font-size:10px;color:#999">${pct.toFixed(1)}%${fmtPp(pct,pctPrev)}</span></td>
+    </tr>`;
+  }).join('');
+
+  const campByDate = {};
+  const campByDatePrev = {};
+  ADS_SOURCES.forEach(src => {
+    const camps = DATA.by_src_camp[src] || {};
+    Object.entries(camps).forEach(([camp, dates]) => {
+      if (!campByDate[camp]) { campByDate[camp] = {}; campByDatePrev[camp] = {}; }
+      Object.entries(dates).forEach(([d, v]) => {
+        if (inRange(d, s, e)) TMETRICS.forEach(m => campByDate[camp][m] = (campByDate[camp][m]||0) + (v[m]||0));
+        if (inRange(d, ps, pe)) TMETRICS.forEach(m => campByDatePrev[camp][m] = (campByDatePrev[camp][m]||0) + (v[m]||0));
+      });
+    });
+  });
+  const campAgg = Object.fromEntries(Object.entries(campByDate).filter(([,v]) => TMETRICS.some(m => v[m]>0)));
+  const campPrevAgg = campByDatePrev;
+  const totalCampRev = Object.values(campAgg).reduce((a,v)=>a+(v['Total revenue']||0),0);
+  const totalCampRevPrev = Object.values(campPrevAgg).reduce((a,v)=>a+(v['Total revenue']||0),0);
+  document.getElementById('campBody').innerHTML = Object.entries(campAgg)
+    .sort((a,b)=>b[1]['Total revenue']-a[1]['Total revenue'])
+    .map(([n,v])=>{
+      const pv = campPrevAgg[n]||{};
+      const pct = totalCampRev>0 ? v['Total revenue']/totalCampRev*100 : 0;
+      const pctPrev = totalCampRevPrev>0 ? (pv['Total revenue']||0)/totalCampRevPrev*100 : 0;
+      const cartRate = v.Sessions>0 ? v['Add to carts']/v.Sessions*100 : 0;
+      const cartRatePrev = (pv.Sessions||0)>0 ? (pv['Add to carts']||0)/pv.Sessions*100 : 0;
+      const buyRate = v['Add to carts']>0 ? v.Purchases/v['Add to carts']*100 : 0;
+      const buyRatePrev = (pv['Add to carts']||0)>0 ? (pv.Purchases||0)/pv['Add to carts']*100 : 0;
+      const vpt = v.Purchases>0 ? v['Total revenue']/v.Purchases : 0;
+      const vptPrev = (pv.Purchases||0)>0 ? (pv['Total revenue']||0)/pv.Purchases : 0;
+      return `<tr>
+        <td style="overflow:hidden;text-overflow:ellipsis" title="${n}">${n}</td>
+        <td class="num">${fmtN(v.Sessions)}${fmtChg(v.Sessions,pv.Sessions)}</td>
+        <td class="num">${fmtN(v['Add to carts'])}${fmtChg(v['Add to carts'],pv['Add to carts'])}</td>
+        <td class="num">${cartRate.toFixed(1)}%${fmtPp(cartRate,cartRatePrev)}</td>
+        <td class="num">${fmtN(v.Purchases)}${fmtChg(v.Purchases,pv.Purchases)}</td>
+        <td class="num">${buyRate.toFixed(1)}%${fmtPp(buyRate,buyRatePrev)}</td>
+        <td class="num">${fmtM(v['Total revenue'])}${fmtChg(v['Total revenue'],pv['Total revenue'])}</td>
+        <td class="num">${vpt>0?fmtM(vpt):'-'}${vptPrev>0?fmtChg(vpt,vptPrev):''}</td>
+        <td><div class="bar-fill" style="width:${Math.min(pct*3,100)}%"></div>
+            <span style="font-size:10px;color:#999">${pct.toFixed(1)}%${fmtPp(pct,pctPrev)}</span></td>
+      </tr>`;
+    }).join('');
+}
+
+const TMETRICS = ['Sessions','Total users','Total revenue','Purchases','Add to carts'];
+const IMETRICS = ['Items viewed','Item quantity','Items added to cart','Items purchased','Item revenue'];
+
+function renderTraffic(s, e) {
+  const trend = aggDaily(DATA.daily_traffic, TMETRICS, s, e);
+  const keys = Object.keys(trend).sort();
+  const totals = {};
+  TMETRICS.forEach(m => totals[m] = keys.reduce((acc,k) => acc + trend[k][m], 0));
+
+  const [ps, pe] = getPrevRange(s, e);
+  const prevT = sumRange(DATA.daily_traffic, TMETRICS, ps, pe);
+
+  const adsT = {}; const adsPrev = {};
+  TMETRICS.forEach(m => { adsT[m] = 0; adsPrev[m] = 0; });
+  ADS_SOURCES.forEach(src => {
+    const dates = DATA.by_src[src];
+    if (!dates) return;
+    Object.entries(dates).forEach(([d, v]) => {
+      if (inRange(d, s, e)) TMETRICS.forEach(m => adsT[m] += (v[m]||0));
+      if (inRange(d, ps, pe)) TMETRICS.forEach(m => adsPrev[m] += (v[m]||0));
+    });
+  });
+
+  document.getElementById('trafficMetrics').innerHTML = [
+    {lbl:'工作階段',key:'Sessions',fmt:fmtN},
+    {lbl:'使用者',key:'Total users',fmt:fmtN},
+    {lbl:'加入購物車',key:'Add to carts',fmt:fmtN},
+    {lbl:'購買',key:'Purchases',fmt:fmtN},
+    {lbl:'營收',key:'Total revenue',fmt:fmtM},
+  ].map(c=>{
+    const share = totals[c.key]>0 ? adsT[c.key]/totals[c.key]*100 : 0;
+    const sharePrev = prevT[c.key]>0 ? adsPrev[c.key]/prevT[c.key]*100 : 0;
+    return `<div class="col-6 col-md-4 col-xl-2">
+    <div class="card p-3 metric-card">
+      <div class="lbl">${c.lbl}</div>
+      <div class="val">${c.fmt(totals[c.key])} ${fmtChg(totals[c.key], prevT[c.key])}</div>
+      <div style="font-size:10px;color:#888;margin-top:4px;">廣告佔比 ${share.toFixed(1)}%${fmtPp(share,sharePrev)}</div>
+    </div></div>`;
+  }).join('');
+
+  const tm = document.querySelector('input[name="tm"]:checked')?.value || 'Sessions';
+  drawLine('trafficChart', 'tC', keys.map(groupLabel), keys.map(k=>trend[k][tm]), tm);
+
+  const srcAgg = aggDim(DATA.by_src, TMETRICS, s, e);
+  const srcPrev = aggDim(DATA.by_src, TMETRICS, ps, pe);
+  const totalSrcRev = Object.values(srcAgg).reduce((a,v)=>a+v['Total revenue'],0);
+  const totalSrcRevPrev = Object.values(srcPrev).reduce((a,v)=>a+v['Total revenue'],0);
+  document.getElementById('srcBody').innerHTML = Object.entries(srcAgg)
+    .sort((a,b)=>b[1].Sessions-a[1].Sessions)
+    .map(([n,v])=>{
+      const pv = srcPrev[n]||{};
+      const pct = totalSrcRev>0 ? v['Total revenue']/totalSrcRev*100 : 0;
+      const pctPrev = totalSrcRevPrev>0 ? (pv['Total revenue']||0)/totalSrcRevPrev*100 : 0;
+      const cartRate = v.Sessions>0 ? v['Add to carts']/v.Sessions*100 : 0;
+      const cartRatePrev = (pv.Sessions||0)>0 ? (pv['Add to carts']||0)/pv.Sessions*100 : 0;
+      const buyRate = v['Add to carts']>0 ? v.Purchases/v['Add to carts']*100 : 0;
+      const buyRatePrev = (pv['Add to carts']||0)>0 ? (pv.Purchases||0)/pv['Add to carts']*100 : 0;
+      const vpt = v.Purchases>0 ? v['Total revenue']/v.Purchases : 0;
+      const vptPrev = (pv.Purchases||0)>0 ? (pv['Total revenue']||0)/pv.Purchases : 0;
+      return `<tr>
+        <td style="overflow:hidden;text-overflow:ellipsis" title="${n}">${n}</td>
+        <td class="num">${fmtN(v.Sessions)}${fmtChg(v.Sessions,pv.Sessions)}</td>
+        <td class="num">${fmtN(v['Add to carts'])}${fmtChg(v['Add to carts'],pv['Add to carts'])}</td>
+        <td class="num">${cartRate.toFixed(1)}%${fmtPp(cartRate,cartRatePrev)}</td>
+        <td class="num">${fmtN(v.Purchases)}${fmtChg(v.Purchases,pv.Purchases)}</td>
+        <td class="num">${buyRate.toFixed(1)}%${fmtPp(buyRate,buyRatePrev)}</td>
+        <td class="num">${fmtM(v['Total revenue'])}${fmtChg(v['Total revenue'],pv['Total revenue'])}</td>
+        <td class="num">${vpt>0?fmtM(vpt):'-'}${vptPrev>0?fmtChg(vpt,vptPrev):''}</td>
+        <td><div class="bar-fill" style="width:${Math.min(pct*3,100)}%"></div>
+            <span style="font-size:10px;color:#999">${pct.toFixed(1)}%${fmtPp(pct,pctPrev)}</span></td>
+      </tr>`;
+    }).join('');
+}
+
+function renderItems(s, e) {
+  const trend = aggDaily(DATA.daily_items, IMETRICS, s, e);
+  const keys = Object.keys(trend).sort();
+
+  const [ps, pe] = getPrevRange(s, e);
+
+  const itemAgg = aggDim(DATA.by_item, IMETRICS, s, e);
+  const itemPrev = aggDim(DATA.by_item, IMETRICS, ps, pe);
+  const totalRev = Object.values(itemAgg).reduce((acc,v)=>acc+v['Item revenue'],0);
+  const totalRevPrev = Object.values(itemPrev).reduce((acc,v)=>acc+v['Item revenue'],0);
+  document.getElementById('itemsBody').innerHTML = Object.entries(itemAgg)
+    .sort((a,b)=>b[1]['Item revenue']-a[1]['Item revenue'])
+    .map(([n,v])=>{
+      const pct = totalRev>0 ? v['Item revenue']/totalRev*100 : 0;
+      const pv = itemPrev[n] || {};
+      const pctPrev = totalRevPrev>0 ? (pv['Item revenue']||0)/totalRevPrev*100 : 0;
+      return `<tr>
+        <td style="min-width:180px;max-width:320px;overflow:hidden;text-overflow:ellipsis" title="${n}">${n}</td>
+        <td class="num">${fmtN(v['Items viewed'])}${fmtChg(v['Items viewed'],pv['Items viewed'])}</td>
+        <td class="num">${fmtN(v['Items added to cart'])}${fmtChg(v['Items added to cart'],pv['Items added to cart'])}</td>
+        <td class="num">${fmtN(v['Items purchased'])}${fmtChg(v['Items purchased'],pv['Items purchased'])}</td>
+        <td class="num">${fmtM(v['Item revenue'])}${fmtChg(v['Item revenue'],pv['Item revenue'])}</td>
+        <td><div class="bar-fill" style="width:${Math.min(pct*5,100)}%"></div>
+            <span style="font-size:10px;color:#999">${pct.toFixed(1)}%${fmtPp(pct,pctPrev)}</span></td>
+      </tr>`;
+    }).join('');
+}
+
+// ── Meta ──────────────────────────────────────────────────────
+const META_ACCOUNT = '629806431400540';
+
+async function fetchMeta(s, e) {
+  const since = toApiDate(s);
+  const until = toApiDate(e);
+  const [ps, pe] = getPrevRange(s, e);
+  const psApi = toApiDate(ps);
+  const peApi = toApiDate(pe);
+  const base = 'http://localhost:5001';
+  const [campRes, trendRes, ageRes, prevRes, adsetRes] = await Promise.all([
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=1`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=all_days&breakdowns=age`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${psApi}&until=${peApi}&level=account&time_increment=all_days`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=adset&time_increment=all_days`).then(r=>r.json()),
+  ]);
+  return { camp: campRes.data || [], trend: trendRes.data || [], age: ageRes.data || [], prev: prevRes.data || [], adset: adsetRes.data || [], updated: campRes.updated };
+}
+
+async function renderMeta(s, e) {
+  document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="11" class="meta-loading">載入 Meta 資料中…</td></tr>';
+  try {
+    const { camp, trend, age, prev, adset, updated } = await fetchMeta(s, e);
+
+    const sumRows = rows => rows.reduce((acc, r) => {
+      acc.spend += r.spend || 0;
+      acc.link_clicks += r.link_clicks || 0;
+      acc.add_to_cart += r.add_to_cart || 0;
+      acc.purchase += r.purchase || 0;
+      acc.purchase_value += r.purchase_value || 0;
+      return acc;
+    }, {spend:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0});
+
+    const totals = sumRows(camp);
+    const prevT  = sumRows(prev);
+
+    const totalRoas     = totals.spend > 0 ? totals.purchase_value / totals.spend : 0;
+    const prevRoas      = prevT.spend  > 0 ? prevT.purchase_value  / prevT.spend  : 0;
+    const totalCplc     = totals.link_clicks > 0 ? totals.spend / totals.link_clicks : 0;
+    const prevCplc      = prevT.link_clicks  > 0 ? prevT.spend  / prevT.link_clicks  : 0;
+    const totalCartRate = totals.link_clicks > 0 ? totals.add_to_cart / totals.link_clicks * 100 : 0;
+    const prevCartRate  = prevT.link_clicks  > 0 ? prevT.add_to_cart  / prevT.link_clicks  * 100 : 0;
+    const totalBuyRate  = totals.add_to_cart > 0 ? totals.purchase / totals.add_to_cart * 100 : 0;
+    const prevBuyRate   = prevT.add_to_cart  > 0 ? prevT.purchase  / prevT.add_to_cart  * 100 : 0;
+
+    document.getElementById('metaMetrics').innerHTML = [
+      {lbl:'花費',    val:`NT$${fmtRaw(totals.spend)}`,          chg:fmtChg(totals.spend,         prevT.spend)},
+      {lbl:'CPLC',   val:`NT$${fmtRaw(totalCplc)}`,             chg:fmtChg(totalCplc,            prevCplc)},
+      {lbl:'加車率',  val:`${totalCartRate.toFixed(2)}%`,         chg:fmtPp(totalCartRate,         prevCartRate)},
+      {lbl:'購買',    val:fmtN(totals.purchase),                  chg:fmtChg(totals.purchase,      prevT.purchase)},
+      {lbl:'購買率',  val:`${totalBuyRate.toFixed(2)}%`,          chg:fmtPp(totalBuyRate,          prevBuyRate)},
+      {lbl:'營收',    val:`NT$${fmtRaw(totals.purchase_value)}`,  chg:fmtChg(totals.purchase_value,prevT.purchase_value)},
+      {lbl:'ROAS',   val:totalRoas.toFixed(2),                   chg:fmtChg(totalRoas,            prevRoas)},
+    ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill">
+      <div class="card p-3 metric-card">
+        <div class="lbl">${c.lbl}</div>
+        <div class="val">${c.val} ${c.chg}</div>
+      </div></div>`).join('');
+
+    // Trend chart
+    META_TREND = trend;
+    drawMetaChart(trend);
+
+    // Daily table
+    renderMetaDaily(trend);
+
+    // Age breakdown
+    renderAge(age);
+
+    // Campaign table
+    document.getElementById('metaUpdated').textContent = updated ? `更新時間 ${updated}` : '';
+    const totalSpend = totals.spend;
+    document.getElementById('metaCampBody').innerHTML = camp
+      .sort((a,b)=>(b.spend||0)-(a.spend||0))
+      .map(r => {
+        const spendPct = totalSpend > 0 ? (r.spend||0)/totalSpend*100 : 0;
+        const roas = r.roas || (r.spend > 0 ? (r.purchase_value||0)/r.spend : 0);
+        return `<tr>
+          <td title="${r.campaign_name||''}">${r.campaign_name||'-'}</td>
+          <td class="num">NT$${fmtRaw(r.spend||0)}</td>
+          <td class="num">${fmtN(r.impressions||0)}</td>
+          <td class="num">${fmtN(r.link_clicks||0)}</td>
+          <td class="num">${(r.ctr||0).toFixed(2)}%</td>
+          <td class="num">NT$${fmtRaw(r.cpc||0)}</td>
+          <td class="num">${fmtN(r.add_to_cart||0)}</td>
+          <td class="num">${fmtN(r.purchase||0)}</td>
+          <td class="num">${r.purchase>0?'NT$'+fmtRaw((r.spend||0)/(r.purchase)):'-'}</td>
+          <td class="num">${roas.toFixed(2)}</td>
+          <td class="num">NT$${fmtRaw(r.purchase_value||0)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+
+    // Audience tables: Triumph vs sloggi (by adset, collapsed at _Column)
+    const stripCol = name => (name||'').replace(/_Column.*/i, '').trim();
+
+    const mergeAdsets = rows => {
+      const map = {};
+      rows.forEach(r => {
+        const key = stripCol(r.adset_name);
+        if (!map[key]) map[key] = {name:key, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
+        map[key].spend         += r.spend         || 0;
+        map[key].impressions   += r.impressions   || 0;
+        map[key].link_clicks   += r.link_clicks   || 0;
+        map[key].add_to_cart   += r.add_to_cart   || 0;
+        map[key].purchase      += r.purchase      || 0;
+        map[key].purchase_value+= r.purchase_value|| 0;
+      });
+      return Object.values(map).sort((a,b)=>b.spend-a.spend);
+    };
+
+    const adsetRow = v => {
+      const ctr  = v.impressions > 0 ? v.link_clicks / v.impressions * 100 : 0;
+      const cpc  = v.link_clicks > 0 ? v.spend / v.link_clicks : 0;
+      const roas = v.spend > 0 ? v.purchase_value / v.spend : 0;
+      return `<tr>
+        <td title="${v.name}">${v.name||'-'}</td>
+        <td class="num">NT$${fmtRaw(v.spend)}</td>
+        <td class="num">${fmtN(v.impressions)}</td>
+        <td class="num">${fmtN(v.link_clicks)}</td>
+        <td class="num">${ctr.toFixed(2)}%</td>
+        <td class="num">NT$${fmtRaw(cpc)}</td>
+        <td class="num">${fmtN(v.add_to_cart)}</td>
+        <td class="num">${fmtN(v.purchase)}</td>
+        <td class="num">${v.purchase>0?'NT$'+fmtRaw(v.spend/v.purchase):'-'}</td>
+        <td class="num">${roas.toFixed(2)}</td>
+        <td class="num">NT$${fmtRaw(v.purchase_value)}</td>
+      </tr>`;
+    };
+
+    // NU vs RU table
+    const nuRuGroup = label => adset.filter(r => (r.adset_name||'').toUpperCase().startsWith(label));
+    const nuRuRow = (label, rows) => {
+      const v = rows.reduce((acc, r) => {
+        acc.spend          += r.spend          || 0;
+        acc.impressions    += r.impressions    || 0;
+        acc.link_clicks    += r.link_clicks    || 0;
+        acc.add_to_cart    += r.add_to_cart    || 0;
+        acc.purchase       += r.purchase       || 0;
+        acc.purchase_value += r.purchase_value || 0;
+        return acc;
+      }, {spend:0,impressions:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0});
+      const ctr  = v.impressions  > 0 ? v.link_clicks / v.impressions * 100 : 0;
+      const cpc  = v.link_clicks  > 0 ? v.spend / v.link_clicks : 0;
+      const roas = v.spend        > 0 ? v.purchase_value / v.spend : 0;
+      return `<tr>
+        <td><strong>${label}</strong></td>
+        <td class="num">NT$${fmtRaw(v.spend)}</td>
+        <td class="num">${fmtN(v.impressions)}</td>
+        <td class="num">${fmtN(v.link_clicks)}</td>
+        <td class="num">${ctr.toFixed(2)}%</td>
+        <td class="num">NT$${fmtRaw(cpc)}</td>
+        <td class="num">${fmtN(v.add_to_cart)}</td>
+        <td class="num">${fmtN(v.purchase)}</td>
+        <td class="num">${v.purchase>0?'NT$'+fmtRaw(v.spend/v.purchase):'-'}</td>
+        <td class="num">${roas.toFixed(2)}</td>
+        <td class="num">NT$${fmtRaw(v.purchase_value)}</td>
+      </tr>`;
+    };
+    document.getElementById('nuRuBody').innerHTML =
+      nuRuRow('NU', nuRuGroup('NU')) + nuRuRow('RU', nuRuGroup('RU'));
+
+    const triumphAdsets = mergeAdsets(adset.filter(r => !(r.campaign_name||'').toLowerCase().includes('sloggi')));
+    const sloggiAdsets  = mergeAdsets(adset.filter(r =>  (r.campaign_name||'').toLowerCase().includes('sloggi')));
+    document.getElementById('audTriumphBody').innerHTML = triumphAdsets.map(adsetRow).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+    document.getElementById('audSloggiBody').innerHTML  = sloggiAdsets.map(adsetRow).join('')  || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+
+  } catch(err) {
+    document.getElementById('metaCampBody').innerHTML = `<tr><td colspan="11" class="meta-loading text-danger">載入失敗: ${err.message}</td></tr>`;
+    document.getElementById('metaMetrics').innerHTML = '';
+    console.error(err);
+  }
+}
+
+function drawMetaChart(trendRows) {
+  const byDate = {};
+  trendRows.forEach(r => {
+    const d = (r.date_start||'').replace(/-/g,'');
+    if (!d) return;
+    const k = groupKey(d);
+    if (!byDate[k]) byDate[k] = {spend:0,purchase:0,roas:0,_n:0};
+    byDate[k].spend += r.spend||0;
+    byDate[k].purchase += r.purchase||0;
+    byDate[k].roas += r.roas||0;
+    byDate[k]._n += 1;
+  });
+  const keys = Object.keys(byDate).sort();
+  const labels = keys.map(groupLabel);
+  const spendVals = keys.map(k => byDate[k].spend);
+  const purchaseVals = keys.map(k => byDate[k].purchase);
+  const roasVals = keys.map(k => byDate[k]._n > 0 ? byDate[k].roas / byDate[k]._n : 0);
+
+  if (charts['mC']) charts['mC'].destroy();
+  charts['mC'] = new Chart(document.getElementById('metaChart').getContext('2d'), {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: '花費',
+          data: spendVals,
+          backgroundColor: 'rgba(100,185,100,.35)',
+          borderColor: 'rgba(100,185,100,.6)',
+          borderWidth: 1,
+          yAxisID: 'yLeft',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'ROAS',
+          data: roasVals,
+          borderColor: '#4f8ef7',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: keys.length>90?0:4,
+          tension: 0.3,
+          yAxisID: 'yRight',
+          order: 0,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { boxWidth: 14, font: {size:11} } },
+        tooltip: { callbacks: {
+          label: c => {
+            if (c.dataset.label === 'ROAS') return `ROAS: ${c.raw.toFixed(2)}x`;
+            if (c.dataset.label === '購買') return `購買: ${fmtN(c.raw)}`;
+            return `花費: NT$${fmtRaw(c.raw)}`;
+          }
+        }}
+      },
+      scales: {
+        yLeft: {
+          type: 'linear', position: 'left',
+          ticks: { callback: v => 'NT$'+fmtRaw(v) },
+          grid: { color: '#f0f0f0' },
+        },
+        yRight: {
+          type: 'linear', position: 'right',
+          ticks: { callback: v => v.toFixed(0)+'x' },
+          grid: { drawOnChartArea: false },
+        },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 14 } }
+      }
+    }
+  });
+}
+
+function renderMetaDaily(trendRows) {
+  const sorted = [...trendRows].sort((a,b)=>(b.date_start||'').localeCompare(a.date_start||''));
+  document.getElementById('metaDailyBody').innerHTML = sorted.map(r => {
+    const d = (r.date_start||'').replace(/-/g,'/');
+    return `<tr>
+      <td>${d}</td>
+      <td class="num">NT$${fmtRaw(r.spend||0)}</td>
+      <td class="num">${fmtN(r.impressions||0)}</td>
+      <td class="num">${fmtN(r.link_clicks||0)}</td>
+      <td class="num">${(r.ctr||0).toFixed(2)}%</td>
+      <td class="num">NT$${fmtRaw(r.cpc||0)}</td>
+      <td class="num">${fmtN(r.add_to_cart||0)}</td>
+      <td class="num">${fmtN(r.purchase||0)}</td>
+      <td class="num">${(r.roas||0).toFixed(2)}</td>
+      <td class="num">NT$${fmtRaw(r.purchase_value||0)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" class="meta-loading">此期間無資料</td></tr>';
+}
+
+function renderAge(ageRows) {
+  if (!ageRows || ageRows.length === 0) return;
+
+  document.getElementById('ageTableCard').style.display = '';
+  document.getElementById('agePieRow').style.display = '';
+
+  const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+  const byAge = {};
+  ageRows.forEach(r => {
+    const age = r.age || '未知';
+    if (!byAge[age]) byAge[age] = {spend:0,impressions:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0,roas:0,_n:0};
+    byAge[age].spend += r.spend||0;
+    byAge[age].impressions += r.impressions||0;
+    byAge[age].link_clicks = (byAge[age].link_clicks||0) + (r.link_clicks||0);
+    byAge[age].add_to_cart += r.add_to_cart||0;
+    byAge[age].purchase += r.purchase||0;
+    byAge[age].purchase_value += r.purchase_value||0;
+    byAge[age].roas += r.roas||0;
+    byAge[age]._n += 1;
+  });
+
+  const sorted = Object.entries(byAge).sort((a,b) => {
+    const ai = AGE_ORDER.indexOf(a[0]), bi = AGE_ORDER.indexOf(b[0]);
+    return (ai===-1?99:ai) - (bi===-1?99:bi);
+  });
+
+  const totalAgeSpend = sorted.reduce((s,[,v])=>s+v.spend,0);
+  const totalAgeRev = sorted.reduce((s,[,v])=>s+v.purchase_value,0);
+
+  document.getElementById('ageBody').innerHTML = sorted.map(([age, v]) => {
+    const ctr = v.impressions>0 ? (v.link_clicks||0)/v.impressions*100 : 0;
+    const roas = v._n>0 ? v.roas/v._n : 0;
+    const spendPct = totalAgeSpend>0 ? v.spend/totalAgeSpend*100 : 0;
+    const revPct = totalAgeRev>0 ? v.purchase_value/totalAgeRev*100 : 0;
+    return `<tr>
+      <td>${age}</td>
+      <td class="num">NT$${fmtRaw(v.spend)}</td>
+      <td class="num">${fmtN(v.impressions)}</td>
+      <td class="num">${fmtN(v.link_clicks||0)}</td>
+      <td class="num">${ctr.toFixed(2)}%</td>
+      <td class="num">${fmtN(v.add_to_cart)}</td>
+      <td class="num">${fmtN(v.purchase)}</td>
+      <td class="num">${roas.toFixed(2)}</td>
+      <td class="num">NT$${fmtRaw(v.purchase_value)}</td>
+      <td><div class="bar-fill" style="width:${Math.min(spendPct*2,100)}%"></div>
+          <span style="font-size:10px;color:#999">${spendPct.toFixed(1)}%</span></td>
+      <td><div class="bar-fill" style="width:${Math.min(revPct*2,100)}%"></div>
+          <span style="font-size:10px;color:#999">${revPct.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join('');
+
+  const PIE_COLORS = ['#4f8ef7','#e66b6b','#64b964','#f7c94f','#a66bf7','#f7874f','#4fcff7'];
+  const labels = sorted.map(([age])=>age);
+
+  if (charts['pieS']) charts['pieS'].destroy();
+  charts['pieS'] = new Chart(document.getElementById('pieSpend').getContext('2d'), {
+    type: 'pie',
+    data: { labels, datasets: [{ data: sorted.map(([,v])=>v.spend), backgroundColor: PIE_COLORS }] },
+    options: {
+      plugins: {
+        legend: { position:'right', labels:{ font:{size:11}, boxWidth:12 } },
+        tooltip: { callbacks: { label: c => `${c.label}: NT$${fmtRaw(c.raw)} (${(c.raw/totalAgeSpend*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+
+  if (charts['pieR']) charts['pieR'].destroy();
+  charts['pieR'] = new Chart(document.getElementById('pieRevenue').getContext('2d'), {
+    type: 'pie',
+    data: { labels, datasets: [{ data: sorted.map(([,v])=>v.purchase_value), backgroundColor: PIE_COLORS }] },
+    options: {
+      plugins: {
+        legend: { position:'right', labels:{ font:{size:11}, boxWidth:12 } },
+        tooltip: { callbacks: { label: c => `${c.label}: NT$${fmtRaw(c.raw)} (${totalAgeRev>0?(c.raw/totalAgeRev*100).toFixed(1):0}%)` } }
+      }
+    }
+  });
+}
+
+// ── Chart ──────────────────────────────────────────────────────
+function drawLine(canvasId, key, labels, data, metric) {
+  if (charts[key]) charts[key].destroy();
+  const isRev = metric.toLowerCase().includes('revenue');
+  charts[key] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data, borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)',
+        borderWidth: 2, pointRadius: labels.length>90?0:3, fill: true, tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>isRev?fmtM(c.raw):fmtN(c.raw)}} },
+      scales: {
+        y:{ticks:{callback:v=>isRev?fmtM(v):fmtN(v)},grid:{color:'#f0f0f0'}},
+        x:{grid:{display:false},ticks:{maxTicksLimit:14}}
+      }
+    }
+  });
+}
+
+function syncDateInputs() {
+  const [s, e] = getRange();
+  const fmt = d => d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8);
+  document.getElementById('dtStart').value = fmt(s);
+  document.getElementById('dtEnd').value   = fmt(e);
+  const isCustom = period === 'custom';
+  document.getElementById('dtStart').disabled = !isCustom;
+  document.getElementById('dtEnd').disabled   = !isCustom;
+}
+function setPeriod(p, el) {
+  period = p;
+  document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  syncDateInputs();
+  render();
+  if (currentSection === 'meta') renderMeta(...getRange());
+  if (currentSection === 'metaCreative') renderMetaCreative(...getRange());
+  if (currentSection === 'crossMedia') renderCrossMedia(...getRange());
+}
+function applyCustom() {
+  const s = document.getElementById('dtStart').value;
+  const e = document.getElementById('dtEnd').value;
+  if (s && e) {
+    cStart=s.replace(/-/g,''); cEnd=e.replace(/-/g,'');
+    render();
+    if (currentSection === 'meta') renderMeta(...getRange());
+    if (currentSection === 'metaCreative') renderMetaCreative(...getRange());
+    if (currentSection === 'crossMedia') renderCrossMedia(...getRange());
+  }
+}
+function switchSection(sec, el) {
+  currentSection = sec;
+  document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('secOverall').style.display       = sec==='overall'       ? '' : 'none';
+  document.getElementById('secAds').style.display           = sec==='ads'           ? '' : 'none';
+  document.getElementById('secMeta').style.display          = sec==='meta'          ? '' : 'none';
+  document.getElementById('secMetaCreative').style.display  = sec==='metaCreative'  ? '' : 'none';
+  document.getElementById('secCrossMedia').style.display    = sec==='crossMedia'    ? '' : 'none';
+  if (sec === 'meta') renderMeta(...getRange());
+  if (sec === 'metaCreative') renderMetaCreative(...getRange());
+  if (sec === 'crossMedia') renderCrossMedia(...getRange());
+}
+async function renderCrossMedia(s, e) {
+  const base = 'http://localhost:5001';
+  const since = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+  const until = e.slice(0,4)+'-'+e.slice(4,6)+'-'+e.slice(6,8);
+  document.getElementById('crossMetaBody').innerHTML = '<tr><td colspan="13" class="meta-loading">載入中…</td></tr>';
+
+  try {
+    const res = await fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days`).then(r=>r.json());
+    const metaCamps = res.data || [];
+
+    // build GA4 campaign map for the date range
+    const fbData = (DATA?.by_src_camp || {})['FacebookWM / soc'] || {};
+    const ga4Map = {};
+    Object.entries(fbData).forEach(([camp, dates]) => {
+      let sessions=0, purchases=0, revenue=0;
+      Object.entries(dates).forEach(([d, v]) => {
+        if (d >= s && d <= e) {
+          sessions  += v['Sessions'] || 0;
+          purchases += v['Purchases'] || 0;
+          revenue   += v['Total revenue'] || 0;
+        }
+      });
+      ga4Map[camp] = { sessions, purchases, revenue };
+    });
+
+    const rows = metaCamps.map(m => {
+      const mSpend   = m.spend || 0;
+      const mClicks  = m.link_clicks || 0;
+      const mPurch   = m.purchase || 0;
+      const mRev     = m.purchase_value || 0;
+      const mCpa     = mPurch > 0 ? mSpend / mPurch : 0;
+      const mRoas    = mSpend > 0 ? mRev / mSpend : 0;
+
+      const g = ga4Map[m.campaign_name] || {};
+      const gSess  = g.sessions  || 0;
+      const gPurch = g.purchases || 0;
+      const gRev   = g.revenue   || 0;
+      const gCpa   = gPurch > 0 ? mSpend / gPurch : 0;
+      const gRoas  = mSpend > 0 ? gRev / mSpend : 0;
+      const gCvr   = gSess  > 0 ? gPurch / gSess * 100 : 0;
+
+      return `<tr>
+        <td style="position:sticky;left:0;z-index:1;background:#fff!important;white-space:nowrap;min-width:200px;" title="${m.campaign_name}">${m.campaign_name}</td>
+        <td class="num" style="background:#fffaf5;">NT$${fmtRaw(mSpend)}</td>
+        <td class="num" style="background:#fffaf5;">${fmtN(mClicks)}</td>
+        <td class="num" style="background:#fffaf5;">${fmtN(mPurch)}</td>
+        <td class="num" style="background:#fffaf5;">${mCpa>0?'NT$'+fmtRaw(mCpa):'-'}</td>
+        <td class="num" style="background:#fffaf5;">NT$${fmtRaw(mRev)}</td>
+        <td class="num" style="background:#fffaf5;">${mRoas.toFixed(2)}</td>
+        <td class="num" style="background:#f5fbf5;">${fmtN(gSess)}</td>
+        <td class="num" style="background:#f5fbf5;">${fmtN(gPurch)}</td>
+        <td class="num" style="background:#f5fbf5;">${gCpa>0?'NT$'+fmtRaw(gCpa):'-'}</td>
+        <td class="num" style="background:#f5fbf5;">NT$${fmtRaw(gRev)}</td>
+        <td class="num" style="background:#f5fbf5;">${gRoas.toFixed(2)}</td>
+        <td class="num" style="background:#f5fbf5;">${gCvr.toFixed(2)}%</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('crossMetaBody').innerHTML = rows || '<tr><td colspan="13" class="meta-loading">此期間無資料</td></tr>';
+  } catch(err) {
+    document.getElementById('crossMetaBody').innerHTML = `<tr><td colspan="13" class="meta-loading text-danger">載入失敗: ${err.message}</td></tr>`;
+  }
+}
+
+document.querySelectorAll('input[name="grp"]').forEach(r=>r.addEventListener('change',()=>{grp=r.value;render();}));
+document.querySelectorAll('input[name="tm"]').forEach(r=>r.addEventListener('change',()=>renderTraffic(...getRange())));
+
+// ── Meta 素材 ──────────────────────────────────────────────────
+let AD_DATA = null;
+let AD_THUMBS = {};
+let selectedFlights = new Set();
+const FLIGHT_RE = /_(\d{4}-\d{4})(?:_.*)?$/;
+const getFlight = name => { const m = (name||'').match(FLIGHT_RE); return m ? m[1] : null; };
+
+async function renderMetaCreative(s, e) {
+  document.getElementById('creativeTriumphBody').innerHTML = '<tr><td colspan="16" class="meta-loading">載入中…</td></tr>';
+  document.getElementById('creativeSloggiBody').innerHTML  = '<tr><td colspan="16" class="meta-loading">載入中…</td></tr>';
+  document.getElementById('creativeMetrics').innerHTML = '';
+  document.getElementById('flightTabs').innerHTML = '';
+  try {
+    const since = toApiDate(s), until = toApiDate(e);
+    const base = 'http://localhost:5001';
+    const [res, thumbRes] = await Promise.all([
+      fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=ad&time_increment=all_days`).then(r=>r.json()),
+      fetch(`${base}/api/ad_urls?account=${META_ACCOUNT}`).then(r=>r.json()),
+    ]);
+    AD_DATA = (res.data || []).filter(r => !(r.ad_name||'').toLowerCase().includes('non'));
+    AD_THUMBS = thumbRes.data || {};
+
+    const allFlights = [...new Set(AD_DATA.map(r => getFlight(r.ad_name)).filter(Boolean))].sort();
+    selectedFlights = new Set(allFlights);
+
+    document.getElementById('flightTabs').innerHTML = allFlights.map(f =>
+      `<span class="flight-tab active" onclick="toggleFlight('${f}')">${f}</span>`
+    ).join('');
+
+    renderCreativeTable();
+  } catch(err) {
+    const msg = `<tr><td colspan="16" class="meta-loading text-danger">載入失敗: ${err.message}</td></tr>`;
+    document.getElementById('creativeTriumphBody').innerHTML = msg;
+    document.getElementById('creativeSloggiBody').innerHTML  = msg;
+    console.error(err);
+  }
+}
+
+function toggleFlight(f) {
+  if (selectedFlights.has(f)) selectedFlights.delete(f);
+  else selectedFlights.add(f);
+  document.querySelectorAll('.flight-tab').forEach(el => {
+    el.classList.toggle('active', selectedFlights.has(el.textContent.trim()));
+  });
+  renderCreativeTable();
+}
+
+function toggleAllFlights() {
+  const all = [...document.querySelectorAll('.flight-tab')].map(el => el.textContent.trim());
+  if (selectedFlights.size === all.length) selectedFlights.clear();
+  else all.forEach(f => selectedFlights.add(f));
+  document.querySelectorAll('.flight-tab').forEach(el => {
+    el.classList.toggle('active', selectedFlights.has(el.textContent.trim()));
+  });
+  renderCreativeTable();
+}
+
+const COLUMN_RE = /(Column[^_]+?)(?=_\d{4}|$)/i;
+const getColumn = name => { const m = (name||'').match(COLUMN_RE); return m ? m[1].trim() : '其他'; };
+
+function renderCreativeTable() {
+  if (!AD_DATA) return;
+  const base = 'http://localhost:5001';
+  const filtered = AD_DATA.filter(r => {
+    const f = getFlight(r.ad_name);
+    return !f || selectedFlights.has(f);
+  });
+
+  const tot = filtered.reduce((acc, r) => {
+    acc.spend          += r.spend          || 0;
+    acc.link_clicks    += r.link_clicks    || 0;
+    acc.add_to_cart    += r.add_to_cart    || 0;
+    acc.purchase       += r.purchase       || 0;
+    acc.purchase_value += r.purchase_value || 0;
+    return acc;
+  }, {spend:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0});
+  const tRoas     = tot.spend       > 0 ? tot.purchase_value / tot.spend       : 0;
+  const tCplc     = tot.link_clicks > 0 ? tot.spend          / tot.link_clicks : 0;
+  const tCartRate = tot.link_clicks > 0 ? tot.add_to_cart    / tot.link_clicks * 100 : 0;
+  const tBuyRate  = tot.add_to_cart > 0 ? tot.purchase       / tot.add_to_cart * 100 : 0;
+
+  document.getElementById('creativeMetrics').innerHTML = [
+    {lbl:'花費',   val:`NT$${fmtRaw(tot.spend)}`},
+    {lbl:'CPLC',  val:`NT$${fmtRaw(tCplc)}`},
+    {lbl:'加車率', val:`${tCartRate.toFixed(2)}%`},
+    {lbl:'購買',   val:fmtN(tot.purchase)},
+    {lbl:'購買率', val:`${tBuyRate.toFixed(2)}%`},
+    {lbl:'營收',   val:`NT$${fmtRaw(tot.purchase_value)}`},
+    {lbl:'ROAS',  val:tRoas.toFixed(2)},
+  ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill">
+    <div class="card p-3 metric-card">
+      <div class="lbl">${c.lbl}</div>
+      <div class="val">${c.val}</div>
+    </div></div>`).join('');
+
+  const toRows = html => html || '<tr><td colspan="16" class="meta-loading">此條件無資料</td></tr>';
+  const primaryFlight = [...selectedFlights][0] || '';
+  const renderRows = subset => subset.map(v => {
+    const ctr     = v.impressions  > 0 ? v.link_clicks / v.impressions * 100 : 0;
+    const cplc    = v.link_clicks  > 0 ? v.spend / v.link_clicks : 0;
+    const cvr     = v.link_clicks  > 0 ? v.purchase / v.link_clicks * 100 : 0;
+    const cpaAtc  = v.add_to_cart  > 0 ? v.spend / v.add_to_cart : 0;
+    const cpp     = v.purchase     > 0 ? v.spend / v.purchase : 0;
+    const buyRate = v.add_to_cart  > 0 ? v.purchase / v.add_to_cart * 100 : 0;
+    const roas    = v.spend        > 0 ? v.purchase_value / v.spend : 0;
+    const vpt     = v.purchase     > 0 ? v.purchase_value / v.purchase : 0;
+    const localUrl = primaryFlight ? `${base}/api/creative_img?flight=${primaryFlight}&column=${encodeURIComponent(v.name)}` : null;
+    const fallback = v.thumb ? `this.src='${v.thumb}';this.onerror=null;` : `this.parentElement.innerHTML='-';this.onerror=null;`;
+    const imgSrc = localUrl || v.thumb || '';
+    const thumbHtml = imgSrc
+      ? `<div style="width:130px;height:130px;border-radius:8px;background-image:url('${imgSrc}');background-size:cover;background-position:center top;background-repeat:no-repeat;"></div>`
+      : '-';
+    return `<tr>
+      <td style="text-align:center;vertical-align:middle;padding:4px 2px;position:sticky;left:0;z-index:1;background:#fff!important;">${thumbHtml}</td>
+      <td title="${v.name}" style="position:sticky;left:136px;z-index:1;background:#fff!important;box-shadow:2px 0 4px rgba(0,0,0,0.08);padding-left:6px;white-space:nowrap;">${v.name}</td>
+      <td class="num">NT$${fmtRaw(v.spend)}</td>
+      <td class="num">${fmtN(v.impressions)}</td>
+      <td class="num">${fmtN(v.link_clicks)}</td>
+      <td class="num">${ctr.toFixed(2)}%</td>
+      <td class="num">NT$${fmtRaw(cplc)}</td>
+      <td class="num">${cvr.toFixed(2)}%</td>
+      <td class="num">${fmtN(v.add_to_cart)}</td>
+      <td class="num">${cpaAtc > 0 ? 'NT$'+fmtRaw(cpaAtc) : '-'}</td>
+      <td class="num">${fmtN(v.purchase)}</td>
+      <td class="num">${cpp > 0 ? 'NT$'+fmtRaw(cpp) : '-'}</td>
+      <td class="num">${buyRate.toFixed(2)}%</td>
+      <td class="num">NT$${fmtRaw(v.purchase_value)}</td>
+      <td class="num">${roas.toFixed(2)}</td>
+      <td class="num">${vpt > 0 ? 'NT$'+fmtRaw(vpt) : '-'}</td>
+    </tr>`;
+  }).join('');
+
+  const isSloggi = r => (r.campaign_name||'').toLowerCase().includes('sloggi');
+  const triumphRows = mergeByColumn(filtered.filter(r => !isSloggi(r)));
+  const sloggiRows  = mergeByColumn(filtered.filter(r =>  isSloggi(r)));
+
+  document.getElementById('creativeTriumphBody').innerHTML = toRows(renderRows(triumphRows));
+  document.getElementById('creativeSloggiBody').innerHTML  = toRows(renderRows(sloggiRows));
+}
+
+function mergeByColumn(ads) {
+  const map = {};
+  ads.forEach(r => {
+    const key = getColumn(r.ad_name);
+    if (!map[key]) map[key] = {name:key, thumb:null, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
+    if (!map[key].thumb) {
+      const t = AD_THUMBS[r.ad_name];
+      if (t?.thumb) map[key].thumb = t.thumb;
+    }
+    map[key].spend          += r.spend          || 0;
+    map[key].impressions    += r.impressions    || 0;
+    map[key].link_clicks    += r.link_clicks    || 0;
+    map[key].add_to_cart    += r.add_to_cart    || 0;
+    map[key].purchase       += r.purchase       || 0;
+    map[key].purchase_value += r.purchase_value || 0;
+  });
+  return Object.values(map).filter(v => v.impressions > 0).sort((a,b) => b.spend - a.spend);
+}
+
+function fmtN(n){return Math.round(n).toLocaleString('zh-TW');}
+function fmtM(n){return 'NT$'+Math.round(n).toLocaleString('zh-TW');}
+function fmtRaw(n){return n.toLocaleString('zh-TW',{minimumFractionDigits:0,maximumFractionDigits:0});}
+
+function sortT(id,col){
+  const tb=document.getElementById(id).querySelector('tbody');
+  const rows=[...tb.querySelectorAll('tr')];
+  const key=id+'_'+col;
+  const asc=sortState[key]!=='asc';
+  sortState[key]=asc?'asc':'desc';
+  rows.sort((a,b)=>{
+    const extract=t=>{ const m=t.match(/-?[\d,]+\.?\d*/); return m?m[0].replace(/,/g,''):t; };
+    const va=extract(a.cells[col].textContent);
+    const vb=extract(b.cells[col].textContent);
+    const na=parseFloat(va),nb=parseFloat(vb);
+    if(!isNaN(na)&&!isNaN(nb))return asc?na-nb:nb-na;
+    return asc?va.localeCompare(vb):vb.localeCompare(va);
+  });
+  rows.forEach(r=>tb.appendChild(r));
+  document.querySelectorAll(`#${id} th`).forEach((th,i)=>{
+    th.classList.remove('asc','desc');
+    if(i===col)th.classList.add(asc?'asc':'desc');
+  });
+}
+
+fetch('http://localhost:5001/Triumph_dashboard/ga4_data.json')
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(d=>{ DATA=d; syncDateInputs(); render(); })
+  .catch(err=>{ document.body.insertAdjacentHTML('afterbegin',`<div class="alert alert-danger m-3">資料載入失敗: ${err}</div>`); console.error(err); });
+</script>
+</body>
+</html>

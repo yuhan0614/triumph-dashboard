@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+cache/
+*.json
+!requirements.txt
+!Triumph_dashboard/ga4_data.json
+.DS_Store
