@@ -5,4 +5,5 @@ cache/
 *.json
 !requirements.txt
 !Triumph_dashboard/ga4_data.json
+!cache/ad_urls_629806431400540.json
 .DS_Store
