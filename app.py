@@ -134,6 +134,41 @@ def api_ad_urls():
     return jsonify({"data": result, "count": len(result), "cached": False})
 
 
+@app.route("/api/thumb")
+def api_thumb():
+    name = request.args.get("name", "")
+    if not name:
+        return jsonify({"error": "missing name"}), 400
+
+    import hashlib
+    from flask import Response
+    thumb_dir = os.path.join(CACHE_DIR, "thumbs")
+    os.makedirs(thumb_dir, exist_ok=True)
+    safe = hashlib.md5(name.encode()).hexdigest()
+    cache_file = os.path.join(thumb_dir, safe + ".jpg")
+
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as f:
+            return Response(f.read(), mimetype="image/jpeg")
+
+    # look up thumb URL from ad_urls cache
+    cached = read_cache(f"ad_urls_{META_ACCOUNT}")
+    if not cached:
+        return jsonify({"error": "no cache"}), 404
+    info = cached.get("data", {}).get(name)
+    if not info or not info.get("thumb"):
+        return jsonify({"error": "not found"}), 404
+
+    try:
+        r = http_requests.get(info["thumb"], timeout=10)
+        r.raise_for_status()
+        with open(cache_file, "wb") as f:
+            f.write(r.content)
+        return Response(r.content, mimetype=r.headers.get("Content-Type", "image/jpeg"))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+
 @app.route("/api/creative_img")
 def creative_img():
     flight = request.args.get("flight", "")
