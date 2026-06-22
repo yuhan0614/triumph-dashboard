@@ -782,7 +782,7 @@ async function fetchMeta(s, e) {
   const [ps, pe] = getPrevRange(s, e);
   const psApi = toApiDate(ps);
   const peApi = toApiDate(pe);
-  const base = 'http://localhost:5001';
+  const base = window.location.origin;
   const [campRes, trendRes, ageRes, prevRes, adsetRes] = await Promise.all([
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=1`).then(r=>r.json()),
@@ -1190,7 +1190,7 @@ function switchSection(sec, el) {
   if (sec === 'crossMedia') renderCrossMedia(...getRange());
 }
 async function renderCrossMedia(s, e) {
-  const base = 'http://localhost:5001';
+  const base = window.location.origin;
   const since = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
   const until = e.slice(0,4)+'-'+e.slice(4,6)+'-'+e.slice(6,8);
   document.getElementById('crossMetaBody').innerHTML = '<tr><td colspan="13" class="meta-loading">載入中…</td></tr>';
@@ -1270,7 +1270,7 @@ async function renderMetaCreative(s, e) {
   document.getElementById('flightTabs').innerHTML = '';
   try {
     const since = toApiDate(s), until = toApiDate(e);
-    const base = 'http://localhost:5001';
+    const base = window.location.origin;
     const [res, thumbRes] = await Promise.all([
       fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=ad&time_increment=all_days`).then(r=>r.json()),
       fetch(`${base}/api/ad_urls?account=${META_ACCOUNT}`).then(r=>r.json()),
@@ -1318,7 +1318,7 @@ const getColumn = name => { const m = (name||'').match(COLUMN_RE); return m ? m[
 
 function renderCreativeTable() {
   if (!AD_DATA) return;
-  const base = 'http://localhost:5001';
+  const base = window.location.origin;
   const filtered = AD_DATA.filter(r => {
     const f = getFlight(r.ad_name);
     return !f || selectedFlights.has(f);
@@ -1440,7 +1440,7 @@ function sortT(id,col){
   });
 }
 
-fetch('http://localhost:5001/Triumph_dashboard/ga4_data.json')
+fetch('/Triumph_dashboard/ga4_data.json')
   .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
   .then(d=>{ DATA=d; syncDateInputs(); render(); })
   .catch(err=>{ document.body.insertAdjacentHTML('afterbegin',`<div class="alert alert-danger m-3">資料載入失敗: ${err}</div>`); console.error(err); });
