@@ -1363,11 +1363,10 @@ function renderCreativeTable() {
     const roas    = v.spend        > 0 ? v.purchase_value / v.spend : 0;
     const vpt     = v.purchase     > 0 ? v.purchase_value / v.purchase : 0;
     const localUrl = primaryFlight ? `${base}/api/creative_img?flight=${primaryFlight}&column=${encodeURIComponent(v.name)}` : null;
-    const proxyUrl = v.thumb ? `${base}/api/thumb?name=${encodeURIComponent(v.name)}` : null;
-    const imgSrc = localUrl || proxyUrl || '';
-    const fallback2 = !localUrl && proxyUrl ? null : (proxyUrl || null);
-    const onerror = localUrl && fallback2
-      ? `this.src='${fallback2}';this.onerror=null;`
+    const fallbackSrc = v.thumb || '';
+    const imgSrc = localUrl || fallbackSrc;
+    const onerror = localUrl && fallbackSrc
+      ? `this.src='${fallbackSrc}';this.onerror=null;`
       : `this.parentElement.style.display='none';this.onerror=null;`;
     const thumbHtml = imgSrc
       ? `<div style="width:130px;height:130px;overflow:hidden;border-radius:8px;display:inline-block;flex-shrink:0;">
