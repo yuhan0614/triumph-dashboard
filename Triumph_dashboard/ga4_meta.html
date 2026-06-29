@@ -430,8 +430,16 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
   <div id="secGads" style="display:none;">
     <div class="row g-3 mb-3" id="gadsMetrics"></div>
     <div class="card p-3 mb-3">
-      <div class="fw-semibold mb-2" style="font-size:12px;">每日趨勢</div>
-      <canvas id="gadsChart" height="90"></canvas>
+      <div class="row g-3">
+        <div class="col-md-7">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📅 每日趨勢</div>
+          <canvas id="gadsChart" height="140"></canvas>
+        </div>
+        <div class="col-md-5">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📊 Campaign 花費佔比</div>
+          <canvas id="gadsDonut" height="140"></canvas>
+        </div>
+      </div>
     </div>
     <div class="card p-3 mb-3">
       <div class="fw-semibold mb-2" style="font-size:12px;">每日明細</div>
@@ -1313,19 +1321,38 @@ async function renderGads(s, e) {
     });
     const dailySorted = Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
 
-    // Trend chart
-    const labels = dailySorted.map(([d])=>d.slice(4,6)+'/'+d.slice(6,8)).reverse();
-    const spendArr = dailySorted.map(([,v])=>v.cost).reverse();
-    const revArr   = dailySorted.map(([,v])=>v.revenue).reverse();
+    // Trend chart (bar 花費 + line 購買 + line ROAS)
+    const labels    = dailySorted.map(([d])=>d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8)).reverse();
+    const spendArr  = dailySorted.map(([,v])=>v.cost).reverse();
+    const buyArr    = dailySorted.map(([,v])=>v.purchase).reverse();
+    const roasArr   = dailySorted.map(([,v])=>v.cost>0?Math.round(v.revenue/v.cost*100)/100:0).reverse();
     if (GADS_CHART) GADS_CHART.destroy();
     GADS_CHART = new Chart(document.getElementById('gadsChart'), {
       type:'bar',
       data:{ labels, datasets:[
-        {label:'花費', data:spendArr, backgroundColor:'rgba(66,133,244,0.7)', yAxisID:'y'},
-        {label:'營收', data:revArr,   backgroundColor:'rgba(52,168,83,0.7)',  yAxisID:'y'},
+        {label:'花費',  data:spendArr, backgroundColor:'rgba(52,168,83,0.6)',  yAxisID:'y',    order:2},
+        {label:'ROAS',  data:roasArr,  borderColor:'#4285f4', backgroundColor:'transparent', type:'line', yAxisID:'y2', tension:0.3, pointRadius:3, order:1},
+        {label:'購買',  data:buyArr,   borderColor:'#fb8c00', backgroundColor:'transparent', type:'line', yAxisID:'y3', tension:0.3, pointRadius:3, order:1},
       ]},
       options:{responsive:true, plugins:{legend:{position:'top'}},
-        scales:{y:{beginAtZero:true, ticks:{callback:v=>'$'+fmtRaw(v)}}}}
+        scales:{
+          y:  {beginAtZero:true, position:'left',  ticks:{callback:v=>'NT$'+fmtRaw(v)}},
+          y2: {beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>v+'x'}},
+          y3: {display:false, beginAtZero:true},
+        }}
+    });
+
+    // Donut chart (campaign spend)
+    const campEntries = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost).slice(0,8);
+    const donutColors = ['#34a853','#4285f4','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#8d6e63'];
+    if (window._gadsDonut) window._gadsDonut.destroy();
+    window._gadsDonut = new Chart(document.getElementById('gadsDonut'), {
+      type:'doughnut',
+      data:{
+        labels: campEntries.map(([n])=>n),
+        datasets:[{data: campEntries.map(([,v])=>v.cost), backgroundColor: donutColors, borderWidth:1}]
+      },
+      options:{responsive:true, plugins:{legend:{position:'right', labels:{font:{size:10}, boxWidth:12}}}}
     });
 
     // Daily table
