@@ -1311,27 +1311,34 @@ async function renderGads(s, e) {
     const rows = all.filter(r => r.date >= s && r.date <= e);
 
     // KPI totals
-    const tot = rows.reduce((a,r) => {
+    const sumRows = rs => rs.reduce((a,r) => {
       a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks;
       a.atc+=r.atc; a.purchase+=r.purchase; a.revenue+=r.revenue;
       return a;
     }, {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0});
+    const tot = sumRows(rows);
+    const [ps, pe] = getPrevRange(s, e);
+    const prev = sumRows(all.filter(r => r.date >= ps && r.date <= pe));
     const ctr  = tot.imp    > 0 ? tot.clicks/tot.imp*100 : 0;
     const cpc  = tot.clicks > 0 ? tot.cost/tot.clicks : 0;
     const cpa  = tot.purchase > 0 ? tot.cost/tot.purchase : 0;
     const roas = tot.cost   > 0 ? tot.revenue/tot.cost : 0;
+    const pctr = prev.imp    > 0 ? prev.clicks/prev.imp*100 : 0;
+    const pcpc = prev.clicks > 0 ? prev.cost/prev.clicks : 0;
+    const pcpa = prev.purchase > 0 ? prev.cost/prev.purchase : 0;
+    const proas= prev.cost   > 0 ? prev.revenue/prev.cost : 0;
 
     document.getElementById('gadsMetrics').innerHTML = [
-      {lbl:'花費',  val:`NT$${fmtRaw(tot.cost)}`},
-      {lbl:'CTR',   val:`${ctr.toFixed(2)}%`},
-      {lbl:'CPC',   val:`NT$${fmtRaw(cpc)}`},
-      {lbl:'加車',  val:fmtN(tot.atc)},
-      {lbl:'購買',  val:fmtN(tot.purchase)},
-      {lbl:'CPA',   val:tot.purchase>0?`NT$${fmtRaw(cpa)}`:'-'},
-      {lbl:'ROAS',  val:roas.toFixed(2)},
-      {lbl:'營收',  val:`NT$${fmtRaw(tot.revenue)}`},
+      {lbl:'花費',  val:`NT$${fmtRaw(tot.cost)}`,    chg:fmtChg(tot.cost, prev.cost)},
+      {lbl:'CTR',   val:`${ctr.toFixed(2)}%`,         chg:fmtChg(ctr, pctr)},
+      {lbl:'CPC',   val:`NT$${fmtRaw(cpc)}`,          chg:fmtChg(cpc, pcpc)},
+      {lbl:'加車',  val:fmtN(tot.atc),                chg:fmtChg(tot.atc, prev.atc)},
+      {lbl:'購買',  val:fmtN(tot.purchase),            chg:fmtChg(tot.purchase, prev.purchase)},
+      {lbl:'CPA',   val:tot.purchase>0?`NT$${fmtRaw(cpa)}`:'-', chg:fmtChg(cpa, pcpa)},
+      {lbl:'ROAS',  val:roas.toFixed(2),               chg:fmtChg(roas, proas)},
+      {lbl:'營收',  val:`NT$${fmtRaw(tot.revenue)}`,  chg:fmtChg(tot.revenue, prev.revenue)},
     ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill">
-      <div class="card p-3 metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}</div></div></div>`).join('');
+      <div class="card p-3 metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}${c.chg}</div></div></div>`).join('');
 
     // Daily aggregation
     const byDate = {};
