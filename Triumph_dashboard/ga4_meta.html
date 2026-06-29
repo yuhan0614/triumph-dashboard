@@ -1358,19 +1358,6 @@ async function renderGads(s, e) {
         }}
     });
 
-    // Donut chart (campaign spend)
-    const campEntries = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost).slice(0,8);
-    const donutColors = ['#34a853','#4285f4','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#8d6e63'];
-    if (window._gadsDonut) window._gadsDonut.destroy();
-    window._gadsDonut = new Chart(document.getElementById('gadsDonut'), {
-      type:'doughnut',
-      data:{
-        labels: campEntries.map(([n])=>n),
-        datasets:[{data: campEntries.map(([,v])=>v.cost), backgroundColor: donutColors, borderWidth:1}]
-      },
-      options:{responsive:true, plugins:{legend:{position:'right', labels:{font:{size:10}, boxWidth:12}}}}
-    });
-
     // Daily table
     document.getElementById('gadsDailyBody').innerHTML = dailySorted.map(([d,v]) => {
       const dctr  = v.imp    >0 ? v.clicks/v.imp*100 : 0;
@@ -1421,6 +1408,19 @@ async function renderGads(s, e) {
           <td class="num">NT$${fmtRaw(v.revenue)}</td>
         </tr>`;
       }).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+
+    // Donut chart (campaign spend)
+    const campEntries = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost).slice(0,8);
+    const donutColors = ['#34a853','#4285f4','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#8d6e63'];
+    if (window._gadsDonut) window._gadsDonut.destroy();
+    window._gadsDonut = new Chart(document.getElementById('gadsDonut'), {
+      type:'doughnut',
+      data:{
+        labels: campEntries.map(([n])=>n),
+        datasets:[{data: campEntries.map(([,v])=>v.cost), backgroundColor: donutColors, borderWidth:1}]
+      },
+      options:{responsive:true, plugins:{legend:{position:'right', labels:{font:{size:10}, boxWidth:12}}}}
+    });
 
   } catch(err) {
     document.getElementById('gadsCampBody').innerHTML = `<tr><td colspan="11" class="text-danger">載入失敗: ${err.message}</td></tr>`;
