@@ -190,15 +190,17 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
   <div id="secMeta">
     <div class="row g-3 mb-3" id="metaMetrics"></div>
 
-    <div class="card px-3 pt-2 pb-2 mb-3">
-      <div class="row g-2 align-items-center">
-        <div class="col-md-7">
-          <div class="fw-semibold mb-1" style="font-size:12px;">📅 每日趨勢</div>
-          <canvas id="metaChart" height="110"></canvas>
+    <div class="row g-3 mb-3">
+      <div class="col-md-7">
+        <div class="card p-3 h-100">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📅 每日趨勢</div>
+          <canvas id="metaChart" height="120"></canvas>
         </div>
-        <div class="col-md-5">
-          <div class="fw-semibold mb-1" style="font-size:12px;">📊 Campaign 花費佔比</div>
-          <canvas id="metaDonut" height="110"></canvas>
+      </div>
+      <div class="col-md-5">
+        <div class="card p-3 h-100 d-flex flex-column justify-content-center">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📊 Campaign 花費佔比</div>
+          <canvas id="metaDonut" height="120"></canvas>
         </div>
       </div>
     </div>
@@ -434,15 +436,17 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
   <!-- ── Google Ads ── -->
   <div id="secGads" style="display:none;">
     <div class="row g-3 mb-3" id="gadsMetrics"></div>
-    <div class="card px-3 pt-2 pb-2 mb-3">
-      <div class="row g-2 align-items-center">
-        <div class="col-md-7">
-          <div class="fw-semibold mb-1" style="font-size:12px;">📅 每日趨勢</div>
-          <canvas id="gadsChart" height="110"></canvas>
+    <div class="row g-3 mb-3">
+      <div class="col-md-7">
+        <div class="card p-3 h-100">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📅 每日趨勢</div>
+          <canvas id="gadsChart" height="120"></canvas>
         </div>
-        <div class="col-md-5">
-          <div class="fw-semibold mb-1" style="font-size:12px;">📊 Campaign 花費佔比</div>
-          <canvas id="gadsDonut" height="110"></canvas>
+      </div>
+      <div class="col-md-5">
+        <div class="card p-3 h-100 d-flex flex-column justify-content-center">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📊 Campaign 花費佔比</div>
+          <canvas id="gadsDonut" height="120"></canvas>
         </div>
       </div>
     </div>
