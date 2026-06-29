@@ -77,16 +77,13 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
 
   <!-- Section tabs -->
   <div class="border-bottom mb-3">
-    <span class="section-tab active" onclick="switchSection('overall',this)">GA4-整體</span>
-    <span class="section-tab" onclick="switchSection('ads',this)">GA4-廣告</span>
-    <span class="section-tab" onclick="switchSection('meta',this)">Meta 廣告</span>
+    <span class="section-tab active" onclick="switchSection('meta',this)">Meta 廣告</span>
     <span class="section-tab" onclick="switchSection('metaCreative',this)">Meta 素材</span>
-    <span class="section-tab" onclick="switchSection('crossMedia',this)">GA4X媒體</span>
     <span class="section-tab" onclick="switchSection('gads',this)">Google Ads</span>
   </div>
 
   <!-- ── 整體 ── -->
-  <div id="secOverall">
+  <div id="secOverall" style="display:none;">
     <div class="row g-3 mb-3" id="trafficMetrics"></div>
 
     <div class="card p-3 mb-3">
@@ -190,7 +187,7 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
   </div>
 
   <!-- ── Meta 廣告 ── -->
-  <div id="secMeta" style="display:none;">
+  <div id="secMeta">
     <div class="row g-3 mb-3" id="metaMetrics"></div>
 
     <div class="card p-3 mb-3">
@@ -531,7 +528,7 @@ const _now = new Date();
 const todayStr = _now.getFullYear().toString() + String(_now.getMonth()+1).padStart(2,'0') + String(_now.getDate()).padStart(2,'0');
 const today = toDate(todayStr);
 
-let period = '7d', grp = 'D', currentSection = 'overall';
+let period = '7d', grp = 'D', currentSection = 'meta';
 let cStart = null, cEnd = null;
 let charts = {};
 let sortState = {};
@@ -1242,15 +1239,14 @@ function switchSection(sec, el) {
   currentSection = sec;
   document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('secOverall').style.display       = sec==='overall'       ? '' : 'none';
-  document.getElementById('secAds').style.display           = sec==='ads'           ? '' : 'none';
+  document.getElementById('secOverall').style.display       = 'none';
+  document.getElementById('secAds').style.display           = 'none';
   document.getElementById('secMeta').style.display          = sec==='meta'          ? '' : 'none';
   document.getElementById('secMetaCreative').style.display  = sec==='metaCreative'  ? '' : 'none';
-  document.getElementById('secCrossMedia').style.display    = sec==='crossMedia'    ? '' : 'none';
+  document.getElementById('secCrossMedia').style.display    = 'none';
   document.getElementById('secGads').style.display          = sec==='gads'          ? '' : 'none';
   if (sec === 'meta') renderMeta(...getRange());
   if (sec === 'metaCreative') renderMetaCreative(...getRange());
-  if (sec === 'crossMedia') renderCrossMedia(...getRange());
   if (sec === 'gads') renderGads(...getRange());
 }
 const GADS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTk7KsiyuNYxl_7yzECPUok1pVjkWUvBacHLFhIyuGb2YwDPhGpNc1SyfdmViSFpbeaY7632RSvx7kT/pub?gid=1358515165&single=true&output=csv';
@@ -1671,7 +1667,7 @@ function sortT(id,col){
 
 fetch('/Triumph_dashboard/ga4_data.json')
   .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(d=>{ DATA=d; syncDateInputs(); render(); })
+  .then(d=>{ DATA=d; syncDateInputs(); renderMeta(...getRange()); })
   .catch(err=>{ document.body.insertAdjacentHTML('afterbegin',`<div class="alert alert-danger m-3">資料載入失敗: ${err}</div>`); console.error(err); });
 </script>
 </body>
