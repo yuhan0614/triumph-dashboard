@@ -191,8 +191,16 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
     <div class="row g-3 mb-3" id="metaMetrics"></div>
 
     <div class="card p-3 mb-3">
-      <div class="fw-semibold mb-2" style="font-size:12px;">每日趨勢</div>
-      <canvas id="metaChart" height="90"></canvas>
+      <div class="row g-3">
+        <div class="col-md-7">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📅 每日趨勢</div>
+          <canvas id="metaChart" height="140"></canvas>
+        </div>
+        <div class="col-md-5">
+          <div class="fw-semibold mb-2" style="font-size:12px;">📊 Campaign 花費佔比</div>
+          <canvas id="metaDonut" height="140"></canvas>
+        </div>
+      </div>
     </div>
 
     <div class="card p-3 mb-3">
@@ -923,6 +931,19 @@ async function renderMeta(s, e) {
         </tr>`;
       }).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
 
+    // Donut chart
+    const donutColors = ['#1877f2','#42b883','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#8d6e63'];
+    const topCamps = camp.sort((a,b)=>(b.spend||0)-(a.spend||0)).slice(0,8);
+    if (window._metaDonut) window._metaDonut.destroy();
+    window._metaDonut = new Chart(document.getElementById('metaDonut'), {
+      type:'doughnut',
+      data:{
+        labels: topCamps.map(r=>r.campaign_name||'-'),
+        datasets:[{data: topCamps.map(r=>r.spend||0), backgroundColor:donutColors, borderWidth:1}]
+      },
+      options:{responsive:true, plugins:{legend:{position:'right', labels:{font:{size:10}, boxWidth:12}}}}
+    });
+
     // Audience tables: Triumph vs sloggi (by adset, collapsed at _Column)
     const stripCol = name => (name||'').replace(/_Column.*/i, '').trim();
 
@@ -1326,15 +1347,14 @@ async function renderGads(s, e) {
     GADS_CHART = new Chart(document.getElementById('gadsChart'), {
       type:'bar',
       data:{ labels, datasets:[
-        {label:'花費',  data:spendArr, backgroundColor:'rgba(52,168,83,0.6)',  yAxisID:'y',    order:2},
+        {label:'花費',  data:spendArr, backgroundColor:'rgba(52,168,83,0.6)',  yAxisID:'y',  order:2},
         {label:'ROAS',  data:roasArr,  borderColor:'#4285f4', backgroundColor:'transparent', type:'line', yAxisID:'y2', tension:0.3, pointRadius:3, order:1},
-        {label:'購買',  data:buyArr,   borderColor:'#fb8c00', backgroundColor:'transparent', type:'line', yAxisID:'y3', tension:0.3, pointRadius:3, order:1},
+        {label:'購買',  data:buyArr,   borderColor:'#fb8c00', backgroundColor:'transparent', type:'line', yAxisID:'y2', tension:0.3, pointRadius:3, order:1},
       ]},
       options:{responsive:true, plugins:{legend:{position:'top'}},
         scales:{
           y:  {beginAtZero:true, position:'left',  ticks:{callback:v=>'NT$'+fmtRaw(v)}},
-          y2: {beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>v+'x'}},
-          y3: {display:false, beginAtZero:true},
+          y2: {beginAtZero:true, position:'right', grid:{drawOnChartArea:false}},
         }}
     });
 
