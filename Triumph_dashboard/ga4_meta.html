@@ -82,6 +82,7 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
     <span class="section-tab" onclick="switchSection('meta',this)">Meta 廣告</span>
     <span class="section-tab" onclick="switchSection('metaCreative',this)">Meta 素材</span>
     <span class="section-tab" onclick="switchSection('crossMedia',this)">GA4X媒體</span>
+    <span class="section-tab" onclick="switchSection('gads',this)">Google Ads</span>
   </div>
 
   <!-- ── 整體 ── -->
@@ -425,6 +426,57 @@ input[type=date]{border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-si
   </div>
 
   <!-- ── GA4X媒體 ── -->
+  <!-- ── Google Ads ── -->
+  <div id="secGads" style="display:none;">
+    <div class="row g-3 mb-3" id="gadsMetrics"></div>
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">每日趨勢</div>
+      <canvas id="gadsChart" height="90"></canvas>
+    </div>
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">每日明細</div>
+      <div class="tw" style="max-height:392px;">
+        <table class="table table-sm table-hover mb-0" id="gadsDailyTable">
+          <thead><tr>
+            <th style="width:110px" onclick="sortT('gadsDailyTable',0)">日期</th>
+            <th class="num" onclick="sortT('gadsDailyTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('gadsDailyTable',2)">曝光</th>
+            <th class="num" onclick="sortT('gadsDailyTable',3)">點擊</th>
+            <th class="num" onclick="sortT('gadsDailyTable',4)">CTR</th>
+            <th class="num" onclick="sortT('gadsDailyTable',5)">CPC</th>
+            <th class="num" onclick="sortT('gadsDailyTable',6)">加車</th>
+            <th class="num" onclick="sortT('gadsDailyTable',7)">購買</th>
+            <th class="num" onclick="sortT('gadsDailyTable',8)">CPA</th>
+            <th class="num" onclick="sortT('gadsDailyTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('gadsDailyTable',10)">營收</th>
+          </tr></thead>
+          <tbody id="gadsDailyBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <div class="fw-semibold mb-2" style="font-size:12px;">廣告活動</div>
+      <div class="tw">
+        <table class="table table-sm table-hover mb-0" id="gadsCampTable">
+          <thead><tr>
+            <th class="col-name" onclick="sortT('gadsCampTable',0)">廣告活動</th>
+            <th class="num" onclick="sortT('gadsCampTable',1)">花費</th>
+            <th class="num col-num" onclick="sortT('gadsCampTable',2)">曝光</th>
+            <th class="num" onclick="sortT('gadsCampTable',3)">點擊</th>
+            <th class="num" onclick="sortT('gadsCampTable',4)">CTR</th>
+            <th class="num" onclick="sortT('gadsCampTable',5)">CPC</th>
+            <th class="num" onclick="sortT('gadsCampTable',6)">加車</th>
+            <th class="num" onclick="sortT('gadsCampTable',7)">購買</th>
+            <th class="num" onclick="sortT('gadsCampTable',8)">CPA</th>
+            <th class="num" onclick="sortT('gadsCampTable',9)">ROAS</th>
+            <th class="num col-num" onclick="sortT('gadsCampTable',10)">營收</th>
+          </tr></thead>
+          <tbody id="gadsCampBody"><tr><td colspan="11" class="meta-loading">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div id="secCrossMedia" style="display:none;">
     <div class="card p-3 mb-3">
       <div class="fw-semibold mb-2" style="font-size:12px;">Meta by 廣告活動</div>
@@ -1164,6 +1216,7 @@ function setPeriod(p, el) {
   if (currentSection === 'meta') renderMeta(...getRange());
   if (currentSection === 'metaCreative') renderMetaCreative(...getRange());
   if (currentSection === 'crossMedia') renderCrossMedia(...getRange());
+  if (currentSection === 'gads') renderGads(...getRange());
 }
 function applyCustom() {
   const s = document.getElementById('dtStart').value;
@@ -1174,6 +1227,7 @@ function applyCustom() {
     if (currentSection === 'meta') renderMeta(...getRange());
     if (currentSection === 'metaCreative') renderMetaCreative(...getRange());
     if (currentSection === 'crossMedia') renderCrossMedia(...getRange());
+    if (currentSection === 'gads') renderGads(...getRange());
   }
 }
 function switchSection(sec, el) {
@@ -1185,10 +1239,152 @@ function switchSection(sec, el) {
   document.getElementById('secMeta').style.display          = sec==='meta'          ? '' : 'none';
   document.getElementById('secMetaCreative').style.display  = sec==='metaCreative'  ? '' : 'none';
   document.getElementById('secCrossMedia').style.display    = sec==='crossMedia'    ? '' : 'none';
+  document.getElementById('secGads').style.display          = sec==='gads'          ? '' : 'none';
   if (sec === 'meta') renderMeta(...getRange());
   if (sec === 'metaCreative') renderMetaCreative(...getRange());
   if (sec === 'crossMedia') renderCrossMedia(...getRange());
+  if (sec === 'gads') renderGads(...getRange());
 }
+const GADS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTk7KsiyuNYxl_7yzECPUok1pVjkWUvBacHLFhIyuGb2YwDPhGpNc1SyfdmViSFpbeaY7632RSvx7kT/pub?output=csv';
+let GADS_DATA = null;
+
+async function loadGadsData() {
+  if (GADS_DATA) return GADS_DATA;
+  const res = await fetch(GADS_CSV);
+  const text = await res.text();
+  const rows = text.trim().split('\n').slice(1).map(line => {
+    const cols = line.split(',');
+    return {
+      date:     (cols[0]||'').trim().replace(/-/g,''),
+      campaign: (cols[1]||'').trim(),
+      cost:     parseFloat(cols[2])||0,
+      imp:      parseFloat(cols[3])||0,
+      clicks:   parseFloat(cols[4])||0,
+      ctr:      parseFloat(cols[5])||0,
+      cpc:      parseFloat(cols[6])||0,
+      atc:      parseFloat(cols[7])||0,
+      purchase: parseFloat(cols[8])||0,
+      revenue:  parseFloat(cols[9])||0,
+      cpa:      parseFloat(cols[10])||0,
+      roas:     parseFloat(cols[11])||0,
+    };
+  }).filter(r => r.date && r.campaign);
+  GADS_DATA = rows;
+  return rows;
+}
+
+let GADS_CHART = null;
+async function renderGads(s, e) {
+  document.getElementById('gadsCampBody').innerHTML = '<tr><td colspan="11" class="meta-loading">載入中…</td></tr>';
+  try {
+    const all = await loadGadsData();
+    const rows = all.filter(r => r.date >= s && r.date <= e);
+
+    // KPI totals
+    const tot = rows.reduce((a,r) => {
+      a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks;
+      a.atc+=r.atc; a.purchase+=r.purchase; a.revenue+=r.revenue;
+      return a;
+    }, {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0});
+    const ctr  = tot.imp    > 0 ? tot.clicks/tot.imp*100 : 0;
+    const cpc  = tot.clicks > 0 ? tot.cost/tot.clicks : 0;
+    const cpa  = tot.purchase > 0 ? tot.cost/tot.purchase : 0;
+    const roas = tot.cost   > 0 ? tot.revenue/tot.cost : 0;
+
+    document.getElementById('gadsMetrics').innerHTML = [
+      {lbl:'花費',  val:`NT$${fmtRaw(tot.cost)}`},
+      {lbl:'CTR',   val:`${ctr.toFixed(2)}%`},
+      {lbl:'CPC',   val:`NT$${fmtRaw(cpc)}`},
+      {lbl:'加車',  val:fmtN(tot.atc)},
+      {lbl:'購買',  val:fmtN(tot.purchase)},
+      {lbl:'CPA',   val:tot.purchase>0?`NT$${fmtRaw(cpa)}`:'-'},
+      {lbl:'ROAS',  val:roas.toFixed(2)},
+      {lbl:'營收',  val:`NT$${fmtRaw(tot.revenue)}`},
+    ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill">
+      <div class="card p-3 metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}</div></div></div>`).join('');
+
+    // Daily aggregation
+    const byDate = {};
+    rows.forEach(r => {
+      if (!byDate[r.date]) byDate[r.date] = {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0};
+      const d = byDate[r.date];
+      d.cost+=r.cost; d.imp+=r.imp; d.clicks+=r.clicks;
+      d.atc+=r.atc; d.purchase+=r.purchase; d.revenue+=r.revenue;
+    });
+    const dailySorted = Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
+
+    // Trend chart
+    const labels = dailySorted.map(([d])=>d.slice(4,6)+'/'+d.slice(6,8)).reverse();
+    const spendArr = dailySorted.map(([,v])=>v.cost).reverse();
+    const revArr   = dailySorted.map(([,v])=>v.revenue).reverse();
+    if (GADS_CHART) GADS_CHART.destroy();
+    GADS_CHART = new Chart(document.getElementById('gadsChart'), {
+      type:'bar',
+      data:{ labels, datasets:[
+        {label:'花費', data:spendArr, backgroundColor:'rgba(66,133,244,0.7)', yAxisID:'y'},
+        {label:'營收', data:revArr,   backgroundColor:'rgba(52,168,83,0.7)',  yAxisID:'y'},
+      ]},
+      options:{responsive:true, plugins:{legend:{position:'top'}},
+        scales:{y:{beginAtZero:true, ticks:{callback:v=>'$'+fmtRaw(v)}}}}
+    });
+
+    // Daily table
+    document.getElementById('gadsDailyBody').innerHTML = dailySorted.map(([d,v]) => {
+      const dctr  = v.imp    >0 ? v.clicks/v.imp*100 : 0;
+      const dcpc  = v.clicks >0 ? v.cost/v.clicks : 0;
+      const dcpa  = v.purchase>0 ? v.cost/v.purchase : 0;
+      const droas = v.cost   >0 ? v.revenue/v.cost : 0;
+      return `<tr>
+        <td>${d.slice(0,4)+'/'+d.slice(4,6)+'/'+d.slice(6,8)}</td>
+        <td class="num">NT$${fmtRaw(v.cost)}</td>
+        <td class="num">${fmtN(v.imp)}</td>
+        <td class="num">${fmtN(v.clicks)}</td>
+        <td class="num">${dctr.toFixed(2)}%</td>
+        <td class="num">NT$${fmtRaw(dcpc)}</td>
+        <td class="num">${fmtN(v.atc)}</td>
+        <td class="num">${fmtN(v.purchase)}</td>
+        <td class="num">${v.purchase>0?'NT$'+fmtRaw(dcpa):'-'}</td>
+        <td class="num">${droas.toFixed(2)}</td>
+        <td class="num">NT$${fmtRaw(v.revenue)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+
+    // Campaign table
+    const byCamp = {};
+    rows.forEach(r => {
+      if (!byCamp[r.campaign]) byCamp[r.campaign] = {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0};
+      const c = byCamp[r.campaign];
+      c.cost+=r.cost; c.imp+=r.imp; c.clicks+=r.clicks;
+      c.atc+=r.atc; c.purchase+=r.purchase; c.revenue+=r.revenue;
+    });
+    document.getElementById('gadsCampBody').innerHTML = Object.entries(byCamp)
+      .sort((a,b)=>b[1].cost-a[1].cost)
+      .map(([name,v]) => {
+        const cctr  = v.imp    >0 ? v.clicks/v.imp*100 : 0;
+        const ccpc  = v.clicks >0 ? v.cost/v.clicks : 0;
+        const ccpa  = v.purchase>0 ? v.cost/v.purchase : 0;
+        const croas = v.cost   >0 ? v.revenue/v.cost : 0;
+        return `<tr>
+          <td title="${name}">${name}</td>
+          <td class="num">NT$${fmtRaw(v.cost)}</td>
+          <td class="num">${fmtN(v.imp)}</td>
+          <td class="num">${fmtN(v.clicks)}</td>
+          <td class="num">${cctr.toFixed(2)}%</td>
+          <td class="num">NT$${fmtRaw(ccpc)}</td>
+          <td class="num">${fmtN(v.atc)}</td>
+          <td class="num">${fmtN(v.purchase)}</td>
+          <td class="num">${v.purchase>0?'NT$'+fmtRaw(ccpa):'-'}</td>
+          <td class="num">${croas.toFixed(2)}</td>
+          <td class="num">NT$${fmtRaw(v.revenue)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="11" class="meta-loading">此期間無資料</td></tr>';
+
+  } catch(err) {
+    document.getElementById('gadsCampBody').innerHTML = `<tr><td colspan="11" class="text-danger">載入失敗: ${err.message}</td></tr>`;
+    console.error(err);
+  }
+}
+
 async function renderCrossMedia(s, e) {
   const base = window.location.origin;
   const since = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
@@ -1362,7 +1558,8 @@ function renderCreativeTable() {
     const buyRate = v.add_to_cart  > 0 ? v.purchase / v.add_to_cart * 100 : 0;
     const roas    = v.spend        > 0 ? v.purchase_value / v.spend : 0;
     const vpt     = v.purchase     > 0 ? v.purchase_value / v.purchase : 0;
-    const localUrl = primaryFlight ? `${base}/api/creative_img?flight=${primaryFlight}&column=${encodeURIComponent(v.name)}` : null;
+    const allFlights = [...selectedFlights].join(',');
+    const localUrl = allFlights ? `${base}/api/creative_img?flights=${encodeURIComponent(allFlights)}&column=${encodeURIComponent(v.name)}` : null;
     const fallbackSrc = v.thumb || '';
     const imgSrc = localUrl || fallbackSrc;
     const onerror = localUrl && fallbackSrc
