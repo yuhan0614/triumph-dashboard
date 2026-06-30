@@ -202,15 +202,25 @@ def api_thumb():
     return jsonify({"error": "not found"}), 404
 
 
+FLIGHT_ALIASES = {
+    "0608-0621": "0601-0621",
+}
+
 @app.route("/api/creative_img")
 def creative_img():
-    flight = request.args.get("flight", "")
+    flights = request.args.get("flights", request.args.get("flight", ""))
     column = request.args.get("column", "")
-    folder = os.path.join(TRIUMPH_CREATIVES, flight)
-    if os.path.isdir(folder):
-        for f in os.listdir(folder):
-            if f.startswith(column) and not f.startswith('.'):
-                return send_from_directory(os.path.abspath(folder), f)
+    candidates = []
+    for flight in [f.strip() for f in flights.split(",") if f.strip()]:
+        candidates.append(flight)
+        if flight in FLIGHT_ALIASES:
+            candidates.append(FLIGHT_ALIASES[flight])
+    for flight in candidates:
+        folder = os.path.join(TRIUMPH_CREATIVES, flight)
+        if os.path.isdir(folder):
+            for f in os.listdir(folder):
+                if f.startswith(column) and not f.startswith('.'):
+                    return send_from_directory(os.path.abspath(folder), f)
     return jsonify({"error": "not found"}), 404
 
 
