@@ -15,7 +15,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 TRIUMPH_CREATIVES = os.environ.get(
     "TRIUMPH_CREATIVES",
-    os.path.join(os.path.dirname(__file__), "..", "Triumph", "creatives")
+    os.path.join(os.path.dirname(__file__), "Triumph_dashboard", "creatives")
 )
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
