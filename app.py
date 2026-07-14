@@ -196,7 +196,7 @@ def api_thumb():
 
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
-    safe = hashlib.md5((("full240|" if big else "thumb64|") + name).encode()).hexdigest()
+    safe = hashlib.md5((("full320|" if big else "thumb64|") + name).encode()).hexdigest()
     cache_file = os.path.join(thumb_dir, safe + ".jpg")
 
     if os.path.exists(cache_file):
@@ -211,7 +211,7 @@ def api_thumb():
             if r.status_code == 200:
                 img = r.content
                 if big:
-                    img = _resize_jpeg(img, 240)
+                    img = _resize_jpeg(img, 320)
                 with open(cache_file, "wb") as f:
                     f.write(img)
                 return Response(img, mimetype="image/jpeg" if big else r.headers.get("Content-Type", "image/jpeg"))
@@ -219,11 +219,13 @@ def api_thumb():
             pass
         return None
 
-    # small size may reuse the cached ad_urls url; big size always fetches a fresh full-res image
-    if not big:
-        cached = read_cache(f"ad_urls_{META_ACCOUNT}")
-        entry = (cached.get("data", {}).get(name) or {}) if cached else {}
-        u = entry.get("thumb") or entry.get("full")
+    # fast path: reuse cached ad_urls url. For big, the outer thumbnail url is
+    # expired but its embedded full-res image url still works — extract it, no API call.
+    cached = read_cache(f"ad_urls_{META_ACCOUNT}")
+    entry = (cached.get("data", {}).get(name) or {}) if cached else {}
+    cached_url = entry.get("thumb") or entry.get("full")
+    if cached_url:
+        u = _embedded_full_url(cached_url) if big else cached_url
         if u:
             resp = _serve(u)
             if resp:
