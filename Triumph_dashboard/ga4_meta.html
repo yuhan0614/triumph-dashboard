@@ -114,6 +114,20 @@
   table.aligned th:nth-child(12), table.aligned td:nth-child(12) { width: 100px; }
   table.aligned td .cell-name { max-width: 100%; }
 
+  .cre-section-title { font-size: 16px; font-weight: 700; margin: 22px 0 14px; display: flex; align-items: center; gap: 8px; }
+  .cre-section-title .cnt { font-size: 12px; font-weight: 600; color: #aaa; }
+  .cre-grid { display: grid; grid-template-columns: repeat(auto-fill, 300px); gap: 16px; justify-content: start; }
+  .cre-card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; width: 300px; }
+  .cre-thumb { position: relative; width: 300px; height: 300px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 12px; }
+  .cre-thumb img { width: 300px; height: 300px; object-fit: cover; display: block; }
+  .cre-badge { position: absolute; top: 8px; left: 8px; z-index: 1; background: rgba(22,119,255,0.92); color: white; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 6px; }
+  .cre-sub { display: block; font-size: 11px; color: #aaa; font-weight: 500; margin-top: 3px; }
+  .cre-body { padding: 12px 14px; }
+  .cre-name { font-size: 12px; font-weight: 600; line-height: 1.4; margin-bottom: 10px; height: 34px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .cre-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; color: #65676b; }
+  .cre-stats b { color: #1a1a2e; font-weight: 700; }
+  .cre-loading { padding: 40px; color: #aaa; grid-column: 1 / -1; }
+
   @media (max-width: 900px) {
     .charts-row, .charts-row-2 { grid-template-columns: 1fr; }
   }
@@ -137,6 +151,7 @@
 <div class="tabs">
   <div class="tab active" id="tabBtnMeta" onclick="switchTab('meta')">Meta 廣告</div>
   <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')">Google 廣告</div>
+  <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')">Meta 素材</div>
 </div>
 
 <div class="controls">
@@ -441,6 +456,14 @@
     </div>
   </div>
 
+  <!-- ══════════ Meta 素材 ══════════ -->
+  <div id="tab-creative" style="display:none;">
+    <div class="cre-section-title">🩷 Triumph <span class="cnt" id="creTriumphCnt"></span></div>
+    <div class="cre-grid" id="creTriumphGrid"></div>
+    <div class="cre-section-title">💙 sloggi <span class="cnt" id="creSloggiCnt"></span></div>
+    <div class="cre-grid" id="creSloggiGrid"></div>
+  </div>
+
 </div>
 
 <script>
@@ -553,8 +576,10 @@ function switchTab(tab) {
   activeTab = tab;
   document.getElementById('tabBtnMeta').classList.toggle('active', tab==='meta');
   document.getElementById('tabBtnGoogle').classList.toggle('active', tab==='google');
-  document.getElementById('tab-meta').style.display   = tab==='meta'   ? '' : 'none';
-  document.getElementById('tab-google').style.display = tab==='google' ? '' : 'none';
+  document.getElementById('tabBtnCreative').classList.toggle('active', tab==='creative');
+  document.getElementById('tab-meta').style.display     = tab==='meta'     ? '' : 'none';
+  document.getElementById('tab-google').style.display   = tab==='google'   ? '' : 'none';
+  document.getElementById('tab-creative').style.display = tab==='creative' ? '' : 'none';
   refresh();
 }
 function setStatus(msg, cls='') { const s=document.getElementById('statusText'); s.textContent=msg; s.className='status-text '+cls; }
@@ -565,6 +590,7 @@ async function refresh() {
   setStatus('載入中…');
   try {
     if (activeTab === 'meta') await renderMeta(curStart, curEnd);
+    else if (activeTab === 'creative') await renderCreative(curStart, curEnd);
     else await renderGads(curStart, curEnd);
   } catch (err) {
     setStatus('❌ ' + err.message, 'err');
@@ -729,6 +755,75 @@ function renderAud(brand) {
   document.getElementById(bodyId).innerHTML = merged.map(v =>
     `<tr><td><span class="cell-name" title="${v.name}">${v.name||'—'}</span></td>${metaMetricCells(v, total)}</tr>`
   ).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
+}
+
+// ══════════ Meta 素材 ══════════
+const CRE_MIN_DATE = '20260601';  // 素材最早只抓 2026/6
+
+const colKey = name => { const m = (name||'').match(/-\s*Column\s+([A-Za-z0-9]+)/i); return m ? m[1].toUpperCase() : null; };
+function accInto(g, r) {
+  g.spend+=r.spend||0; g.impressions+=r.impressions||0; g.link_clicks+=r.link_clicks||0;
+  g.add_to_cart+=r.add_to_cart||0; g.purchase+=r.purchase||0; g.purchase_value+=r.purchase_value||0;
+}
+function buildCreativeGroups(rows) {
+  const cols = {}, byName = {};
+  rows.forEach(r => {
+    const ck = colKey(r.ad_name);
+    if (ck) {
+      if (!cols[ck]) cols[ck] = {type:'col', col:ck, name:'Column '+ck, thumbName:r.ad_name, _top:-1, members:0, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
+      const g = cols[ck]; accInto(g, r); g.members += 1;
+      if ((r.spend||0) > g._top) { g._top = r.spend||0; g.thumbName = r.ad_name; }
+    } else {
+      const k = r.ad_name || '—';
+      if (!byName[k]) byName[k] = {type:'name', name:k, thumbName:k, members:0, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
+      accInto(byName[k], r); byName[k].members += 1;
+    }
+  });
+  return [...Object.values(cols), ...Object.values(byName)].sort((a,b)=>b.spend-a.spend);
+}
+function creCard(v) {
+  const roas = v.spend>0 ? v.purchase_value/v.spend : 0;
+  const ctr  = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
+  const badge = v.type==='col' ? `<span class="cre-badge">Column ${v.col}</span>` : '';
+  const sub = v.members>1 ? `<span class="cre-sub">合併 ${v.members} 個素材</span>` : '';
+  return `<div class="cre-card">
+    <div class="cre-thumb">${badge}<img loading="lazy" src="/api/thumb?name=${encodeURIComponent(v.thumbName)}" alt="" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>無縮圖</span>')"></div>
+    <div class="cre-body">
+      <div class="cre-name" title="${(v.name||'').replace(/"/g,'&quot;')}">${v.name||'—'}${sub}</div>
+      <div class="cre-stats">
+        <span>花費 <b>${fmtM(v.spend)}</b></span>
+        <span>ROAS <b>${roas.toFixed(2)}</b></span>
+        <span>購買 <b>${fmtN(v.purchase)}</b></span>
+        <span>購買金額 <b>${fmtM(v.purchase_value)}</b></span>
+        <span>加車 <b>${fmtN(v.add_to_cart)}</b></span>
+        <span>CTR <b>${ctr.toFixed(2)}%</b></span>
+      </div>
+    </div>
+  </div>`;
+}
+async function renderCreative(s, e) {
+  const effStart = (s && s > CRE_MIN_DATE) ? s : CRE_MIN_DATE;
+  document.getElementById('creTriumphGrid').innerHTML = '<div class="cre-loading">載入素材中…</div>';
+  document.getElementById('creSloggiGrid').innerHTML = '';
+  if (effStart > e) {
+    document.getElementById('creTriumphGrid').innerHTML = '<div class="cre-loading">素材資料自 2026/6 起，此期間無資料</div>';
+    document.getElementById('creSloggiCnt').textContent = '';
+    document.getElementById('creTriumphCnt').textContent = '';
+    setStatus('素材資料自 2026/6 起', 'ok');
+    return;
+  }
+  const base = window.location.origin;
+  const res = await fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(effStart)}&until=${toApiDate(e)}&level=ad&time_increment=all_days`).then(r=>r.json());
+  const ads = (res.data||[]).filter(r => !(r.ad_name||'').toLowerCase().includes('non'));
+  const triumph = buildCreativeGroups(ads.filter(r => !isSloggi(r.campaign_name)));
+  const sloggi  = buildCreativeGroups(ads.filter(r =>  isSloggi(r.campaign_name)));
+  document.getElementById('creTriumphGrid').innerHTML = triumph.map(creCard).join('') || '<div class="cre-loading">此期間無素材</div>';
+  document.getElementById('creSloggiGrid').innerHTML  = sloggi.map(creCard).join('')  || '<div class="cre-loading">此期間無素材</div>';
+  document.getElementById('creTriumphCnt').textContent = `${triumph.length} 組`;
+  document.getElementById('creSloggiCnt').textContent  = `${sloggi.length} 組`;
+  document.getElementById('lastUpdate').textContent = res.updated || new Date().toLocaleString('zh-TW');
+  const noteFrom = (s && s < CRE_MIN_DATE) ? '（起點已調整為 2026/6）' : '';
+  setStatus(`✓ 完成・Triumph ${triumph.length} / sloggi ${sloggi.length} 組素材${noteFrom}`, 'ok');
 }
 
 function drawMetaChart(trendRows) {
