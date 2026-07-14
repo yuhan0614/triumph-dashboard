@@ -134,20 +134,25 @@ def api_ad_urls():
     return jsonify({"data": result, "count": len(result), "cached": False})
 
 
-def _fetch_fresh_thumb(name, token):
-    """Re-fetch thumbnail_url for a single ad from Meta API."""
+def _fetch_fresh_creative(name, token):
+    """Re-fetch thumbnail + full image url for a single ad from Meta API."""
     from meta_api import BASE_URL
     r = http_requests.get(
         f"{BASE_URL}/act_{META_ACCOUNT}/ads",
-        params={"access_token": token, "fields": "name,creative{thumbnail_url}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
+        params={"access_token": token, "fields": "name,creative{thumbnail_url,image_url,object_story_spec}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
         timeout=10
     )
     data = r.json()
     for ad in data.get("data", []):
-        creative = ad.get("creative") or {}
-        t = creative.get("thumbnail_url")
-        if t:
-            return t
+        cr = ad.get("creative") or {}
+        oss = cr.get("object_story_spec") or {}
+        oss_pic = ((oss.get("link_data") or {}).get("picture")
+                   or (oss.get("video_data") or {}).get("image_url")
+                   or (oss.get("template_data") or {}).get("picture"))
+        return {
+            "thumb": cr.get("thumbnail_url") or oss_pic or cr.get("image_url"),
+            "full": cr.get("image_url") or oss_pic or cr.get("thumbnail_url"),
+        }
     return None
 
 
@@ -156,12 +161,15 @@ def api_thumb():
     import hashlib
     from flask import Response
     name = request.args.get("name", "")
+    size = request.args.get("size", "thumb")
+    if size not in ("thumb", "full"):
+        size = "thumb"
     if not name:
         return jsonify({"error": "missing name"}), 400
 
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
-    safe = hashlib.md5(name.encode()).hexdigest()
+    safe = hashlib.md5(f"{size}|{name}".encode()).hexdigest()
     cache_file = os.path.join(thumb_dir, safe + ".jpg")
 
     if os.path.exists(cache_file):
@@ -169,14 +177,14 @@ def api_thumb():
             return Response(f.read(), mimetype="image/jpeg")
 
     cached = read_cache(f"ad_urls_{META_ACCOUNT}")
-    thumb_url = (cached.get("data", {}).get(name) or {}).get("thumb") if cached else None
+    entry = (cached.get("data", {}).get(name) or {}) if cached else {}
+    url = entry.get(size) or entry.get("full") or entry.get("thumb")
 
     token = os.environ.get("META_ACCESS_TOKEN")
 
-    # try cached URL first; if expired (403/4xx), re-fetch fresh
-    if thumb_url:
+    def _serve(u):
         try:
-            r = http_requests.get(thumb_url, timeout=10)
+            r = http_requests.get(u, timeout=10)
             if r.status_code == 200:
                 img = r.content
                 with open(cache_file, "wb") as f:
@@ -184,20 +192,21 @@ def api_thumb():
                 return Response(img, mimetype=r.headers.get("Content-Type", "image/jpeg"))
         except Exception:
             pass
+        return None
 
-    # expired or missing — fetch fresh from Meta API
+    # try cached URL first; if expired (403/4xx), re-fetch fresh
+    if url:
+        resp = _serve(url)
+        if resp:
+            return resp
+
+    # expired or missing — fetch fresh from Meta API (gets high-res image_url too)
     if token:
-        fresh = _fetch_fresh_thumb(name, token)
-        if fresh:
-            try:
-                r = http_requests.get(fresh, timeout=10)
-                if r.status_code == 200:
-                    img = r.content
-                    with open(cache_file, "wb") as f:
-                        f.write(img)
-                    return Response(img, mimetype=r.headers.get("Content-Type", "image/jpeg"))
-            except Exception:
-                pass
+        fresh = _fetch_fresh_creative(name, token)
+        if fresh and fresh.get(size):
+            resp = _serve(fresh[size])
+            if resp:
+                return resp
 
     return jsonify({"error": "not found"}), 404
 
