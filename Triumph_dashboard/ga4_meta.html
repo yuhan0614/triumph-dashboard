@@ -114,17 +114,11 @@
   table.aligned th:nth-child(12), table.aligned td:nth-child(12) { width: 100px; }
   table.aligned td .cell-name { max-width: 100%; }
 
-  .ad-name-cell { display: flex; align-items: center; gap: 10px; }
-  .ad-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e5e5; cursor: zoom-in; flex: 0 0 auto; background: #f4f4f4; transition: transform .12s ease; }
-  .ad-thumb:hover { transform: scale(1.12); }
-  .ad-thumb-empty { width: 48px; height: 48px; border-radius: 6px; flex: 0 0 auto; background: #f4f4f4; border: 1px dashed #ddd; display: inline-flex; align-items: center; justify-content: center; color: #bbb; font-size: 14px; }
+  .ad-name-cell { display: flex; align-items: center; gap: 12px; }
+  .ad-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e5e5; flex: 0 0 auto; background: #f4f4f4; }
+  .ad-thumb-empty { width: 96px; height: 96px; border-radius: 8px; flex: 0 0 auto; background: #f4f4f4; border: 1px dashed #ddd; display: inline-flex; align-items: center; justify-content: center; color: #bbb; font-size: 16px; }
   .cre-rowsub { display: block; font-size: 11px; color: #aaa; font-weight: 500; margin-top: 2px; }
   .cre-badge { display: inline-block; background: #e6f0ff; color: #1677ff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-right: 6px; }
-  .lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.8); align-items: center; justify-content: center; cursor: zoom-out; padding: 32px; }
-  .lightbox.open { display: flex; }
-  .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 12px 48px rgba(0,0,0,.5); background: #fff; }
-  .lightbox .lb-close { position: absolute; top: 20px; right: 28px; color: #fff; font-size: 34px; line-height: 1; cursor: pointer; opacity: .85; }
-  .lightbox .lb-close:hover { opacity: 1; }
 
   @media (max-width: 900px) {
     .charts-row, .charts-row-2 { grid-template-columns: 1fr; }
@@ -503,11 +497,6 @@
 
 </div>
 
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lb-close">&times;</span>
-  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
-</div>
-
 <script>
 const META_ACCOUNT = '629806431400540';
 const GADS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTk7KsiyuNYxl_7yzECPUok1pVjkWUvBacHLFhIyuGb2YwDPhGpNc1SyfdmViSFpbeaY7632RSvx7kT/pub?gid=1358515165&single=true&output=csv';
@@ -801,8 +790,6 @@ function renderAud(brand) {
 
 // ══════════ Meta 素材 ══════════
 const CRE_MIN_DATE = '20260622';  // 素材最早只抓 2026/6/22
-function openLightbox(url) { document.getElementById('lightboxImg').src = url; document.getElementById('lightbox').classList.add('open'); }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightboxImg').src = ''; }
 
 const colKey = name => { const m = (name||'').match(/-\s*Column\s+([A-Za-z0-9]+)/i); return m ? m[1].toUpperCase() : null; };
 function accInto(g, r) {
@@ -835,7 +822,7 @@ function creRow(v) {
   const enc = encodeURIComponent(v.thumbName);
   return `<tr>
     <td><div class="ad-name-cell">
-      <img class="ad-thumb" loading="lazy" src="/api/thumb?name=${enc}" alt="" onclick="openLightbox('/api/thumb?name=${enc}&size=full')" onerror="this.outerHTML='<span class=ad-thumb-empty>—</span>'">
+      <img class="ad-thumb" loading="lazy" src="/api/thumb?name=${enc}&size=full" alt="" onerror="this.outerHTML='<span class=ad-thumb-empty>—</span>'">
       <span class="cell-name" title="${((v.name)||'').replace(/"/g,'&quot;')}">${badge}${label}${sub}</span>
     </div></td>
     <td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>
