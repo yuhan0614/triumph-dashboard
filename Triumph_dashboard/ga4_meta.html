@@ -114,6 +114,7 @@
   table.aligned th:nth-child(12), table.aligned td:nth-child(12) { width: 100px; }
   table.aligned td .cell-name { max-width: 100%; }
 
+  #creTriumphWrap, #creSloggiWrap { max-height: 1314px; overflow-y: auto; }
   .ad-name-cell { display: flex; align-items: center; gap: 12px; }
   .ad-thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e5e5; flex: 0 0 auto; background: #f4f4f4; }
   .ad-thumb-empty { width: 140px; height: 140px; border-radius: 8px; flex: 0 0 auto; background: #f4f4f4; border: 1px dashed #ddd; display: inline-flex; align-items: center; justify-content: center; color: #bbb; font-size: 18px; }
@@ -449,8 +450,8 @@
   <!-- ══════════ Meta 素材 ══════════ -->
   <div id="tab-creative" style="display:none;">
     <div class="table-card">
-      <div class="table-header"><h3>🩷 廣告素材 — Triumph</h3><span class="sub" id="creTriumphCnt"></span></div>
-      <div class="table-wrap" style="max-height:none;">
+      <div class="table-header"><h3>Triumph-素材成效</h3><span class="sub" id="creTriumphCnt"></span></div>
+      <div class="table-wrap" id="creTriumphWrap">
         <table id="creTriumphTable">
           <thead><tr>
             <th onclick="sortT('creTriumphTable',0)">素材</th>
@@ -471,8 +472,8 @@
     </div>
 
     <div class="table-card">
-      <div class="table-header"><h3>💙 廣告素材 — sloggi</h3><span class="sub" id="creSloggiCnt"></span></div>
-      <div class="table-wrap" style="max-height:none;">
+      <div class="table-header"><h3>Sloggi-素材成效</h3><span class="sub" id="creSloggiCnt"></span></div>
+      <div class="table-wrap" id="creSloggiWrap">
         <table id="creSloggiTable">
           <thead><tr>
             <th onclick="sortT('creSloggiTable',0)">素材</th>
