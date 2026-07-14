@@ -788,7 +788,7 @@ function renderAud(brand) {
 }
 
 // ══════════ Meta 素材 ══════════
-const CRE_MIN_DATE = '20260622';  // 素材最早只抓 2026/6/22
+const CRE_MIN_DATE = '20260101';  // 素材最早只抓 2026/1/1
 
 const colKey = name => { const m = (name||'').match(/-\s*Column\s+([A-Za-z0-9]+)/i); return m ? m[1].toUpperCase() : null; };
 function accInto(g, r) {
@@ -833,11 +833,11 @@ async function renderCreative(s, e) {
   document.getElementById('creTriumphBody').innerHTML = '<tr><td colspan="11" class="loading-cell">載入素材中…</td></tr>';
   document.getElementById('creSloggiBody').innerHTML = '';
   if (effStart > e) {
-    document.getElementById('creTriumphBody').innerHTML = '<tr><td colspan="11" class="loading-cell">素材資料自 2026/6/22 起，此期間無資料</td></tr>';
+    document.getElementById('creTriumphBody').innerHTML = '<tr><td colspan="11" class="loading-cell">素材資料自 2026/1/1 起，此期間無資料</td></tr>';
     document.getElementById('creSloggiBody').innerHTML = '';
     document.getElementById('creSloggiCnt').textContent = '';
     document.getElementById('creTriumphCnt').textContent = '';
-    setStatus('素材資料自 2026/6/22 起', 'ok');
+    setStatus('素材資料自 2026/1/1 起', 'ok');
     return;
   }
   const base = window.location.origin;
@@ -850,7 +850,7 @@ async function renderCreative(s, e) {
   document.getElementById('creTriumphCnt').textContent = `${triumph.length} 組`;
   document.getElementById('creSloggiCnt').textContent  = `${sloggi.length} 組`;
   document.getElementById('lastUpdate').textContent = res.updated || new Date().toLocaleString('zh-TW');
-  const noteFrom = (s && s < CRE_MIN_DATE) ? '（起點已調整為 2026/6/22）' : '';
+  const noteFrom = (s && s < CRE_MIN_DATE) ? '（起點已調整為 2026/1/1）' : '';
   setStatus(`✓ 完成・Triumph ${triumph.length} / sloggi ${sloggi.length} 組素材${noteFrom}`, 'ok');
 }
 
