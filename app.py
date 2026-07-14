@@ -134,14 +134,23 @@ def api_ad_urls():
     return jsonify({"data": result, "count": len(result), "cached": False})
 
 
+def _embedded_full_url(thumbnail_url):
+    """Meta's 64px thumbnail_url embeds the original full-res image as a
+    url= query param (facebook.com/ads/image/...). Pull it out."""
+    from urllib.parse import urlparse, parse_qs
+    try:
+        return parse_qs(urlparse(thumbnail_url).query).get("url", [None])[0]
+    except Exception:
+        return None
+
+
 def _fetch_fresh_creative(name, token, big=False):
-    """Re-fetch a creative image for a single ad. When big=True, request a
-    larger (400px) thumbnail so it stays sharp when displayed bigger."""
+    """Re-fetch a creative image url for a single ad. When big=True, return the
+    embedded full-resolution image instead of the 64px thumbnail."""
     from meta_api import BASE_URL
-    dim = 400 if big else 64
     r = http_requests.get(
         f"{BASE_URL}/act_{META_ACCOUNT}/ads",
-        params={"access_token": token, "fields": f"name,creative{{thumbnail_url.width({dim}).height({dim}),image_url,object_story_spec}}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
+        params={"access_token": token, "fields": "name,creative{thumbnail_url,image_url,object_story_spec}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
         timeout=15
     )
     data = r.json()
@@ -154,9 +163,23 @@ def _fetch_fresh_creative(name, token, big=False):
         thumb = cr.get("thumbnail_url")
         return {
             "thumb": thumb or oss_pic or cr.get("image_url"),
-            "full": cr.get("image_url") or oss_pic or thumb,
+            "full": cr.get("image_url") or oss_pic or _embedded_full_url(thumb) or thumb,
         }
     return None
+
+
+def _resize_jpeg(img_bytes, box):
+    """Downscale to fit box×box, return JPEG bytes. No-op if Pillow missing."""
+    try:
+        from PIL import Image
+        import io
+        im = Image.open(io.BytesIO(img_bytes))
+        im.thumbnail((box, box))
+        buf = io.BytesIO()
+        im.convert("RGB").save(buf, format="JPEG", quality=85)
+        return buf.getvalue()
+    except Exception:
+        return img_bytes
 
 
 @app.route("/api/thumb")
@@ -171,26 +194,9 @@ def api_thumb():
         return jsonify({"error": "missing name"}), 400
     big = (size == "full")
 
-    if request.args.get("debug"):
-        token = os.environ.get("META_ACCESS_TOKEN")
-        from meta_api import BASE_URL
-        out = {}
-        for tag, params in {
-            "modifier": {"fields": "name,creative{thumbnail_url.width(400).height(400),image_url,object_story_spec{link_data{picture,child_attachments}}}"},
-            "queryparam": {"fields": "name,creative{thumbnail_url,image_url}", "thumbnail_width": 400, "thumbnail_height": 400},
-        }.items():
-            p = {"access_token": token, "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1}
-            p.update(params)
-            try:
-                r = http_requests.get(f"{BASE_URL}/act_{META_ACCOUNT}/ads", params=p, timeout=15)
-                out[tag] = r.json()
-            except Exception as e:
-                out[tag] = {"exc": str(e)}
-        return jsonify(out)
-
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
-    safe = hashlib.md5((("full400|" if big else "thumb64|") + name).encode()).hexdigest()
+    safe = hashlib.md5((("full240|" if big else "thumb64|") + name).encode()).hexdigest()
     cache_file = os.path.join(thumb_dir, safe + ".jpg")
 
     if os.path.exists(cache_file):
@@ -204,14 +210,16 @@ def api_thumb():
             r = http_requests.get(u, timeout=15)
             if r.status_code == 200:
                 img = r.content
+                if big:
+                    img = _resize_jpeg(img, 240)
                 with open(cache_file, "wb") as f:
                     f.write(img)
-                return Response(img, mimetype=r.headers.get("Content-Type", "image/jpeg"))
+                return Response(img, mimetype="image/jpeg" if big else r.headers.get("Content-Type", "image/jpeg"))
         except Exception:
             pass
         return None
 
-    # small size may reuse the cached ad_urls url; big size always fetches a fresh larger image
+    # small size may reuse the cached ad_urls url; big size always fetches a fresh full-res image
     if not big:
         cached = read_cache(f"ad_urls_{META_ACCOUNT}")
         entry = (cached.get("data", {}).get(name) or {}) if cached else {}
