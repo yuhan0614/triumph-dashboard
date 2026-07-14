@@ -95,6 +95,25 @@
   .thumb-box img { width: 110px; height: 110px; object-fit: cover; display: block; }
   .loading-cell { text-align: center; padding: 40px; color: #aaa; }
 
+  .tbl-filters { display: flex; gap: 8px; align-items: center; }
+  .tbl-filters select { padding: 5px 10px; border: 1.5px solid #e4e6ea; border-radius: 8px; font-size: 12px; background: white; color: #333; max-width: 240px; cursor: pointer; outline: none; }
+  .tbl-filters select:focus { border-color: #1677ff; }
+
+  table.aligned { table-layout: fixed; }
+  table.aligned th:nth-child(1),  table.aligned td:nth-child(1)  { width: 190px; }
+  table.aligned th:nth-child(2),  table.aligned td:nth-child(2)  { width: 90px; }
+  table.aligned th:nth-child(3),  table.aligned td:nth-child(3)  { width: 80px; }
+  table.aligned th:nth-child(4),  table.aligned td:nth-child(4)  { width: 84px; }
+  table.aligned th:nth-child(5),  table.aligned td:nth-child(5)  { width: 62px; }
+  table.aligned th:nth-child(6),  table.aligned td:nth-child(6)  { width: 62px; }
+  table.aligned th:nth-child(7),  table.aligned td:nth-child(7)  { width: 62px; }
+  table.aligned th:nth-child(8),  table.aligned td:nth-child(8)  { width: 62px; }
+  table.aligned th:nth-child(9),  table.aligned td:nth-child(9)  { width: 80px; }
+  table.aligned th:nth-child(10), table.aligned td:nth-child(10) { width: 68px; }
+  table.aligned th:nth-child(11), table.aligned td:nth-child(11) { width: 104px; }
+  table.aligned th:nth-child(12), table.aligned td:nth-child(12) { width: 100px; }
+  table.aligned td .cell-name { max-width: 100%; }
+
   @media (max-width: 900px) {
     .charts-row, .charts-row-2 { grid-template-columns: 1fr; }
   }
@@ -192,11 +211,11 @@
 
     <div class="table-card">
       <div class="table-header">
-        <h3>🎯 廣告活動</h3>
+        <h3>🎯 廣告活動明細</h3>
         <span class="sub" id="metaUpdated"></span>
       </div>
       <div class="table-wrap">
-        <table id="metaCampTable">
+        <table id="metaCampTable" class="aligned">
           <thead><tr>
             <th onclick="sortT('metaCampTable',0)">廣告活動</th>
             <th onclick="sortT('metaCampTable',1)">花費</th>
@@ -209,16 +228,50 @@
             <th onclick="sortT('metaCampTable',8)">CPP</th>
             <th onclick="sortT('metaCampTable',9)">ROAS</th>
             <th onclick="sortT('metaCampTable',10)">購買金額</th>
+            <th onclick="sortT('metaCampTable',11)">花費佔比</th>
           </tr></thead>
-          <tbody id="metaCampBody"><tr><td colspan="11" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="metaCampBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
 
     <div class="table-card">
-      <div class="table-header"><h3>🔁 NU / RU 成效對比</h3></div>
+      <div class="table-header"><h3>🏷️ 品牌（Triumph / sloggi）</h3></div>
       <div class="table-wrap">
-        <table id="nuRuTable">
+        <table id="metaBrandTable" class="aligned">
+          <thead><tr>
+            <th onclick="sortT('metaBrandTable',0)">品牌</th>
+            <th onclick="sortT('metaBrandTable',1)">花費</th>
+            <th onclick="sortT('metaBrandTable',2)">曝光</th>
+            <th onclick="sortT('metaBrandTable',3)">連結點擊</th>
+            <th onclick="sortT('metaBrandTable',4)">CTR</th>
+            <th onclick="sortT('metaBrandTable',5)">CPC</th>
+            <th onclick="sortT('metaBrandTable',6)">加車</th>
+            <th onclick="sortT('metaBrandTable',7)">購買</th>
+            <th onclick="sortT('metaBrandTable',8)">CPP</th>
+            <th onclick="sortT('metaBrandTable',9)">ROAS</th>
+            <th onclick="sortT('metaBrandTable',10)">購買金額</th>
+            <th onclick="sortT('metaBrandTable',11)">花費佔比</th>
+          </tr></thead>
+          <tbody id="metaBrandBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <h3>🔁 NU / RU 成效對比</h3>
+        <div class="tbl-filters">
+          <select id="nuRuBrand" onchange="renderNuRu()">
+            <option value="">全部品牌</option>
+            <option value="Triumph">Triumph</option>
+            <option value="sloggi">sloggi</option>
+          </select>
+          <select id="nuRuCamp" onchange="renderNuRu()"><option value="">全部活動</option></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="nuRuTable" class="aligned">
           <thead><tr>
             <th onclick="sortT('nuRuTable',0)">群組</th>
             <th onclick="sortT('nuRuTable',1)">花費</th>
@@ -231,6 +284,7 @@
             <th onclick="sortT('nuRuTable',8)">CPP</th>
             <th onclick="sortT('nuRuTable',9)">ROAS</th>
             <th onclick="sortT('nuRuTable',10)">購買金額</th>
+            <th onclick="sortT('nuRuTable',11)">花費佔比</th>
           </tr></thead>
           <tbody id="nuRuBody"></tbody>
         </table>
@@ -238,9 +292,14 @@
     </div>
 
     <div class="table-card">
-      <div class="table-header"><h3>👥 廣告受眾 — Triumph</h3></div>
+      <div class="table-header">
+        <h3>👥 廣告受眾 — Triumph</h3>
+        <div class="tbl-filters">
+          <select id="audTriumphCamp" onchange="renderAud('triumph')"><option value="">全部活動</option></select>
+        </div>
+      </div>
       <div class="table-wrap">
-        <table id="audTriumphTable">
+        <table id="audTriumphTable" class="aligned">
           <thead><tr>
             <th onclick="sortT('audTriumphTable',0)">廣告組合</th>
             <th onclick="sortT('audTriumphTable',1)">花費</th>
@@ -253,16 +312,22 @@
             <th onclick="sortT('audTriumphTable',8)">CPP</th>
             <th onclick="sortT('audTriumphTable',9)">ROAS</th>
             <th onclick="sortT('audTriumphTable',10)">購買金額</th>
+            <th onclick="sortT('audTriumphTable',11)">花費佔比</th>
           </tr></thead>
-          <tbody id="audTriumphBody"><tr><td colspan="11" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="audTriumphBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
 
     <div class="table-card">
-      <div class="table-header"><h3>👥 廣告受眾 — sloggi</h3></div>
+      <div class="table-header">
+        <h3>👥 廣告受眾 — sloggi</h3>
+        <div class="tbl-filters">
+          <select id="audSloggiCamp" onchange="renderAud('sloggi')"><option value="">全部活動</option></select>
+        </div>
+      </div>
       <div class="table-wrap">
-        <table id="audSloggiTable">
+        <table id="audSloggiTable" class="aligned">
           <thead><tr>
             <th onclick="sortT('audSloggiTable',0)">廣告組合</th>
             <th onclick="sortT('audSloggiTable',1)">花費</th>
@@ -275,8 +340,9 @@
             <th onclick="sortT('audSloggiTable',8)">CPP</th>
             <th onclick="sortT('audSloggiTable',9)">ROAS</th>
             <th onclick="sortT('audSloggiTable',10)">購買金額</th>
+            <th onclick="sortT('audSloggiTable',11)">花費佔比</th>
           </tr></thead>
-          <tbody id="audSloggiBody"><tr><td colspan="11" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="audSloggiBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -386,6 +452,7 @@ let grp = 'D';
 let charts = {};
 let sortState = {};
 let META_TREND = null;
+let META_CAMP = [], META_ADSET = [];
 
 // ── date helpers ──────────────────────────────────────────────
 const toDate = s => new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8));
@@ -523,7 +590,7 @@ async function fetchMeta(s, e) {
 }
 
 async function renderMeta(s, e) {
-  document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="11" class="loading-cell">載入 Meta 資料中…</td></tr>';
+  document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="12" class="loading-cell">載入 Meta 資料中…</td></tr>';
   const { camp, trend, age, prev, adset, updated } = await fetchMeta(s, e);
 
   const sumRows = rows => rows.reduce((a, r) => {
@@ -558,77 +625,110 @@ async function renderMeta(s, e) {
   renderAge(age);
 
   document.getElementById('metaUpdated').textContent = updated ? `更新時間 ${updated}` : '';
+  META_CAMP = camp; META_ADSET = adset;
   const totalSpend = totals.spend;
   document.getElementById('metaCampBody').innerHTML = camp
-    .sort((a,b)=>(b.spend||0)-(a.spend||0))
-    .map(r => {
-      const rRoas = r.roas || (r.spend>0 ? (r.purchase_value||0)/r.spend : 0);
-      return `<tr>
-        <td><span class="cell-name" title="${r.campaign_name||''}">${r.campaign_name||'—'}</span></td>
-        <td>${fmtM(r.spend)}</td>
-        <td>${fmtN(r.impressions)}</td>
-        <td>${fmtN(r.link_clicks)}</td>
-        <td>${(r.ctr||0).toFixed(2)}%</td>
-        <td>${fmtM(r.cpc||0)}</td>
-        <td>${fmtN(r.add_to_cart)}</td>
-        <td>${fmtN(r.purchase)}</td>
-        <td>${r.purchase>0?fmtM((r.spend||0)/r.purchase):'<span class="na">—</span>'}</td>
-        <td>${rRoas.toFixed(2)}</td>
-        <td>${fmtM(r.purchase_value)}</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
+    .slice().sort((a,b)=>(b.spend||0)-(a.spend||0))
+    .map(r => `<tr><td><span class="cell-name" title="${r.campaign_name||''}">${r.campaign_name||'—'}</span></td>${metaMetricCells(metaAgg([r]), totalSpend)}</tr>`)
+    .join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('metaDonut', camp.slice().sort((a,b)=>(b.spend||0)-(a.spend||0)).slice(0,8).map(r=>({name:r.campaign_name||'—', val:r.spend||0})));
 
-  // 受眾 / NU-RU
-  const stripCol = name => (name||'').replace(/_Column.*/i, '').trim();
-  const mergeAdsets = rows => {
-    const map = {};
-    rows.forEach(r => {
-      const key = stripCol(r.adset_name);
-      if (!map[key]) map[key] = {name:key, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
-      map[key].spend+=r.spend||0; map[key].impressions+=r.impressions||0; map[key].link_clicks+=r.link_clicks||0;
-      map[key].add_to_cart+=r.add_to_cart||0; map[key].purchase+=r.purchase||0; map[key].purchase_value+=r.purchase_value||0;
-    });
-    return Object.values(map).sort((a,b)=>b.spend-a.spend);
-  };
-  const adsetRow = v => {
-    const ctr = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
-    const cpc = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
-    const rs  = v.spend>0 ? v.purchase_value/v.spend : 0;
-    return `<tr>
-      <td><span class="cell-name" title="${v.name}">${v.name||'—'}</span></td>
-      <td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>
-      <td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>
-      <td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>
-    </tr>`;
-  };
-
-  const nuRuGroup = label => adset.filter(r => (r.adset_name||'').toUpperCase().startsWith(label));
-  const nuRuRow = (label, rows) => {
-    const v = sumRows(rows);
-    const ctr = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
-    const cpc = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
-    const rs  = v.spend>0 ? v.purchase_value/v.spend : 0;
-    return `<tr>
-      <td><strong>${label}</strong></td>
-      <td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>
-      <td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>
-      <td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>
-    </tr>`;
-  };
-  document.getElementById('nuRuBody').innerHTML = nuRuRow('NU', nuRuGroup('NU')) + nuRuRow('RU', nuRuGroup('RU'));
-
-  const triumphAdsets = mergeAdsets(adset.filter(r => !(r.campaign_name||'').toLowerCase().includes('sloggi')));
-  const sloggiAdsets  = mergeAdsets(adset.filter(r =>  (r.campaign_name||'').toLowerCase().includes('sloggi')));
-  document.getElementById('audTriumphBody').innerHTML = triumphAdsets.map(adsetRow).join('') || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
-  document.getElementById('audSloggiBody').innerHTML  = sloggiAdsets.map(adsetRow).join('')  || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
+  fillCampFilters();
+  renderBrand();
+  renderNuRu();
+  renderAud('triumph');
+  renderAud('sloggi');
 
   const uAt = updated || new Date().toLocaleString('zh-TW');
   document.getElementById('lastUpdate').textContent = uAt;
   setStatus(`✓ 完成・${camp.length} campaigns`, 'ok');
+}
+
+// ── Meta 表格共用 helper ───────────────────────────────────────
+const isSloggi = n => (n||'').toLowerCase().includes('sloggi');
+const stripCol = name => (name||'').replace(/_Column.*/i, '').trim();
+
+function metaAgg(rows) {
+  return rows.reduce((a, r) => {
+    a.spend+=r.spend||0; a.impressions+=r.impressions||0; a.link_clicks+=r.link_clicks||0;
+    a.add_to_cart+=r.add_to_cart||0; a.purchase+=r.purchase||0; a.purchase_value+=r.purchase_value||0;
+    return a;
+  }, {spend:0,impressions:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0});
+}
+function mergeAdsets(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const key = stripCol(r.adset_name);
+    if (!map[key]) map[key] = {name:key, spend:0, impressions:0, link_clicks:0, add_to_cart:0, purchase:0, purchase_value:0};
+    map[key].spend+=r.spend||0; map[key].impressions+=r.impressions||0; map[key].link_clicks+=r.link_clicks||0;
+    map[key].add_to_cart+=r.add_to_cart||0; map[key].purchase+=r.purchase||0; map[key].purchase_value+=r.purchase_value||0;
+  });
+  return Object.values(map).sort((a,b)=>b.spend-a.spend);
+}
+function shareCell(spend, total) {
+  const pct = total>0 ? spend/total*100 : 0;
+  return `<td><div class="spend-bar-wrap"><span style="font-size:11px;color:#888">${pct.toFixed(1)}%</span><div class="spend-bar" style="width:${Math.round(pct/100*60)}px"></div></div></td>`;
+}
+function metaMetricCells(v, total) {
+  const ctr = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
+  const cpc = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+  const rs  = v.spend>0 ? v.purchase_value/v.spend : 0;
+  return `<td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>`
+    + `<td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>`
+    + `<td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>`
+    + `<td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>`
+    + shareCell(v.spend, total);
+}
+
+function fillCampFilters() {
+  const names = [...new Set(META_CAMP.map(r=>r.campaign_name).filter(Boolean))];
+  const esc = s => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const opts = arr => '<option value="">全部活動</option>' + arr.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  const set = (id, arr) => {
+    const el = document.getElementById(id); const prev = el.value;
+    el.innerHTML = opts(arr);
+    el.value = arr.includes(prev) ? prev : '';
+  };
+  set('nuRuCamp', names);
+  set('audTriumphCamp', names.filter(n=>!isSloggi(n)));
+  set('audSloggiCamp', names.filter(n=>isSloggi(n)));
+}
+function renderBrand() {
+  const total = metaAgg(META_CAMP).spend;
+  const groups = [
+    ['Triumph', META_CAMP.filter(r=>!isSloggi(r.campaign_name))],
+    ['sloggi',  META_CAMP.filter(r=> isSloggi(r.campaign_name))],
+  ];
+  document.getElementById('metaBrandBody').innerHTML = groups.map(([name, rows]) =>
+    `<tr><td><span class="cell-name">${name}</span></td>${metaMetricCells(metaAgg(rows), total)}</tr>`
+  ).join('');
+}
+function renderNuRu() {
+  const brand = document.getElementById('nuRuBrand').value;
+  const campSel = document.getElementById('nuRuCamp').value;
+  let rows = META_ADSET;
+  if (brand==='Triumph') rows = rows.filter(r=>!isSloggi(r.campaign_name));
+  else if (brand==='sloggi') rows = rows.filter(r=>isSloggi(r.campaign_name));
+  if (campSel) rows = rows.filter(r=>(r.campaign_name||'')===campSel);
+  const grp = label => rows.filter(r=>(r.adset_name||'').toUpperCase().startsWith(label));
+  const nu = metaAgg(grp('NU')), ru = metaAgg(grp('RU'));
+  const total = nu.spend + ru.spend;
+  document.getElementById('nuRuBody').innerHTML =
+    `<tr><td><strong>NU</strong></td>${metaMetricCells(nu, total)}</tr>`
+    + `<tr><td><strong>RU</strong></td>${metaMetricCells(ru, total)}</tr>`;
+}
+function renderAud(brand) {
+  const sloggi = brand==='sloggi';
+  const bodyId = sloggi ? 'audSloggiBody' : 'audTriumphBody';
+  const campSel = document.getElementById(sloggi ? 'audSloggiCamp' : 'audTriumphCamp').value;
+  let rows = META_ADSET.filter(r => sloggi ? isSloggi(r.campaign_name) : !isSloggi(r.campaign_name));
+  if (campSel) rows = rows.filter(r=>(r.campaign_name||'')===campSel);
+  const merged = mergeAdsets(rows);
+  const total = merged.reduce((s,v)=>s+v.spend,0);
+  document.getElementById(bodyId).innerHTML = merged.map(v =>
+    `<tr><td><span class="cell-name" title="${v.name}">${v.name||'—'}</span></td>${metaMetricCells(v, total)}</tr>`
+  ).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
 }
 
 function drawMetaChart(trendRows) {
