@@ -171,6 +171,23 @@ def api_thumb():
         return jsonify({"error": "missing name"}), 400
     big = (size == "full")
 
+    if request.args.get("debug"):
+        token = os.environ.get("META_ACCESS_TOKEN")
+        from meta_api import BASE_URL
+        out = {}
+        for tag, params in {
+            "modifier": {"fields": "name,creative{thumbnail_url.width(400).height(400),image_url,object_story_spec{link_data{picture,child_attachments}}}"},
+            "queryparam": {"fields": "name,creative{thumbnail_url,image_url}", "thumbnail_width": 400, "thumbnail_height": 400},
+        }.items():
+            p = {"access_token": token, "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1}
+            p.update(params)
+            try:
+                r = http_requests.get(f"{BASE_URL}/act_{META_ACCOUNT}/ads", params=p, timeout=15)
+                out[tag] = r.json()
+            except Exception as e:
+                out[tag] = {"exc": str(e)}
+        return jsonify(out)
+
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
     safe = hashlib.md5((("full400|" if big else "thumb64|") + name).encode()).hexdigest()
