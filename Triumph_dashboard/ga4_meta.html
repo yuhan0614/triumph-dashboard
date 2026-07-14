@@ -117,8 +117,7 @@
   .ad-name-cell { display: flex; align-items: center; gap: 12px; }
   .ad-thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e5e5; flex: 0 0 auto; background: #f4f4f4; }
   .ad-thumb-empty { width: 140px; height: 140px; border-radius: 8px; flex: 0 0 auto; background: #f4f4f4; border: 1px dashed #ddd; display: inline-flex; align-items: center; justify-content: center; color: #bbb; font-size: 18px; }
-  .cre-rowsub { display: block; font-size: 11px; color: #aaa; font-weight: 500; margin-top: 2px; }
-  .cre-badge { display: inline-block; background: #e6f0ff; color: #1677ff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 5px; margin-right: 6px; }
+  .cre-badge { display: inline-block; background: #e6f0ff; color: #1677ff; font-size: 16px; font-weight: 700; padding: 3px 12px; border-radius: 6px; }
 
   @media (max-width: 900px) {
     .charts-row, .charts-row-2 { grid-template-columns: 1fr; }
@@ -818,12 +817,11 @@ function creRow(v) {
   const cpc  = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
   const badge = v.type==='col' ? `<span class="cre-badge">Column ${v.col}</span>` : '';
   const label = v.type==='col' ? '' : (v.name||'—');
-  const sub = v.members>1 ? `<span class="cre-rowsub">合併 ${v.members} 個素材</span>` : '';
   const enc = encodeURIComponent(v.thumbName);
   return `<tr>
     <td><div class="ad-name-cell">
       <img class="ad-thumb" loading="lazy" src="/api/thumb?name=${enc}&size=full" alt="" onerror="this.outerHTML='<span class=ad-thumb-empty>—</span>'">
-      <span class="cell-name" title="${((v.name)||'').replace(/"/g,'&quot;')}">${badge}${label}${sub}</span>
+      <span class="cell-name" title="${((v.name)||'').replace(/"/g,'&quot;')}">${badge}${label}</span>
     </div></td>
     <td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>
     <td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>
