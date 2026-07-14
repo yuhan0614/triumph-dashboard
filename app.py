@@ -134,13 +134,15 @@ def api_ad_urls():
     return jsonify({"data": result, "count": len(result), "cached": False})
 
 
-def _fetch_fresh_creative(name, token):
-    """Re-fetch thumbnail + full image url for a single ad from Meta API."""
+def _fetch_fresh_creative(name, token, big=False):
+    """Re-fetch a creative image for a single ad. When big=True, request a
+    larger (400px) thumbnail so it stays sharp when displayed bigger."""
     from meta_api import BASE_URL
+    dim = 400 if big else 64
     r = http_requests.get(
         f"{BASE_URL}/act_{META_ACCOUNT}/ads",
-        params={"access_token": token, "fields": "name,creative{thumbnail_url,image_url,object_story_spec}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
-        timeout=10
+        params={"access_token": token, "fields": f"name,creative{{thumbnail_url.width({dim}).height({dim}),image_url,object_story_spec}}", "filtering": json.dumps([{"field": "name", "operator": "EQUAL", "value": name}]), "limit": 1},
+        timeout=15
     )
     data = r.json()
     for ad in data.get("data", []):
@@ -149,9 +151,10 @@ def _fetch_fresh_creative(name, token):
         oss_pic = ((oss.get("link_data") or {}).get("picture")
                    or (oss.get("video_data") or {}).get("image_url")
                    or (oss.get("template_data") or {}).get("picture"))
+        thumb = cr.get("thumbnail_url")
         return {
-            "thumb": cr.get("thumbnail_url") or oss_pic or cr.get("image_url"),
-            "full": cr.get("image_url") or oss_pic or cr.get("thumbnail_url"),
+            "thumb": thumb or oss_pic or cr.get("image_url"),
+            "full": cr.get("image_url") or oss_pic or thumb,
         }
     return None
 
@@ -166,25 +169,22 @@ def api_thumb():
         size = "thumb"
     if not name:
         return jsonify({"error": "missing name"}), 400
+    big = (size == "full")
 
     thumb_dir = os.path.join(CACHE_DIR, "thumbs")
     os.makedirs(thumb_dir, exist_ok=True)
-    safe = hashlib.md5(f"{size}|{name}".encode()).hexdigest()
+    safe = hashlib.md5((("full400|" if big else "thumb64|") + name).encode()).hexdigest()
     cache_file = os.path.join(thumb_dir, safe + ".jpg")
 
     if os.path.exists(cache_file):
         with open(cache_file, "rb") as f:
             return Response(f.read(), mimetype="image/jpeg")
 
-    cached = read_cache(f"ad_urls_{META_ACCOUNT}")
-    entry = (cached.get("data", {}).get(name) or {}) if cached else {}
-    url = entry.get(size) or entry.get("full") or entry.get("thumb")
-
     token = os.environ.get("META_ACCESS_TOKEN")
 
     def _serve(u):
         try:
-            r = http_requests.get(u, timeout=10)
+            r = http_requests.get(u, timeout=15)
             if r.status_code == 200:
                 img = r.content
                 with open(cache_file, "wb") as f:
@@ -194,15 +194,18 @@ def api_thumb():
             pass
         return None
 
-    # try cached URL first; if expired (403/4xx), re-fetch fresh
-    if url:
-        resp = _serve(url)
-        if resp:
-            return resp
+    # small size may reuse the cached ad_urls url; big size always fetches a fresh larger image
+    if not big:
+        cached = read_cache(f"ad_urls_{META_ACCOUNT}")
+        entry = (cached.get("data", {}).get(name) or {}) if cached else {}
+        u = entry.get("thumb") or entry.get("full")
+        if u:
+            resp = _serve(u)
+            if resp:
+                return resp
 
-    # expired or missing — fetch fresh from Meta API (gets high-res image_url too)
     if token:
-        fresh = _fetch_fresh_creative(name, token)
+        fresh = _fetch_fresh_creative(name, token, big=big)
         if fresh and fresh.get(size):
             resp = _serve(fresh[size])
             if resp:
