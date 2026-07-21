@@ -1014,7 +1014,7 @@ async function renderOverall(s, e) {
     {lbl:'合計營收',  val:`NT$${fmtRaw(totRev)}`,      chg:fmtChg(totRev,pRev)},
     {lbl:'合計 ROAS', val:totRoas.toFixed(2)+'x',      chg:fmtChg(totRoas,pRoas)},
     {lbl:'合計 CPA',  val:totBuy>0?`NT$${fmtRaw(totCpa)}`:'-', chg:fmtChg(totCpa,pCpa)},
-  ].map(c=>`<div class="metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}${c.chg}</div></div>`).join('');
+  ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill"><div class="card p-3 metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}${c.chg}</div></div></div>`).join('');
 
   // daily trend — grouped bars Meta/Google + ROAS line
   const byDate = {};
@@ -1046,7 +1046,7 @@ async function renderOverall(s, e) {
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'top'}},
       scales:{
-        y:  {beginAtZero:true, position:'left',  stacked:false, ticks:{callback:v=>'NT$'+fmtRaw(v)}},
+        y:  {beginAtZero:true, position:'left',  stacked:true, ticks:{callback:v=>'NT$'+fmtRaw(v)}},
         y2: {beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>v.toFixed(1)+'x'}},
       }}
   });
