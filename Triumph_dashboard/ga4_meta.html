@@ -140,9 +140,10 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" id="tabBtnMeta" onclick="switchTab('meta')">Meta 廣告</div>
-  <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')">Google 廣告</div>
+  <div class="tab active" id="tabBtnOverall" onclick="switchTab('overall')">媒體總成效</div>
+  <div class="tab" id="tabBtnMeta" onclick="switchTab('meta')">Meta 廣告</div>
   <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')">Meta 素材</div>
+  <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')">Google 廣告</div>
 </div>
 
 <div class="controls">
@@ -179,8 +180,42 @@
 
 <div class="main">
 
+  <!-- ══════════ 媒體總成效 ══════════ -->
+  <div id="tab-overall">
+    <div class="summary-grid" id="overallMetrics"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>📅 每日花費趨勢（Meta vs Google）</h3>
+        <div class="chart-wrap"><canvas id="overallChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>💰 花費佔比（媒體）</h3>
+        <div class="chart-wrap"><canvas id="overallDonut"></canvas></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header"><h3>📊 媒體比較</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>媒體</th>
+            <th class="num">花費</th>
+            <th class="num">曝光</th>
+            <th class="num">點擊</th>
+            <th class="num">CTR</th>
+            <th class="num">購買</th>
+            <th class="num">營收</th>
+            <th class="num">ROAS</th>
+            <th class="num">CPA</th>
+          </tr></thead>
+          <tbody id="overallMediaBody"><tr><td colspan="9" class="loading-cell">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════ Meta 廣告 ══════════ -->
-  <div id="tab-meta">
+  <div id="tab-meta" style="display:none;">
     <div class="summary-grid" id="metaMetrics"></div>
 
     <div class="charts-row">
@@ -500,7 +535,7 @@
 const META_ACCOUNT = '629806431400540';
 const GADS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTk7KsiyuNYxl_7yzECPUok1pVjkWUvBacHLFhIyuGb2YwDPhGpNc1SyfdmViSFpbeaY7632RSvx7kT/pub?gid=1358515165&single=true&output=csv';
 
-let activeTab = 'meta';
+let activeTab = 'overall';
 let grp = 'D';
 let charts = {};
 let sortState = {};
@@ -604,12 +639,10 @@ function fmtPp(cur, prev) {
 // ── tab / refresh ─────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
-  document.getElementById('tabBtnMeta').classList.toggle('active', tab==='meta');
-  document.getElementById('tabBtnGoogle').classList.toggle('active', tab==='google');
-  document.getElementById('tabBtnCreative').classList.toggle('active', tab==='creative');
-  document.getElementById('tab-meta').style.display     = tab==='meta'     ? '' : 'none';
-  document.getElementById('tab-google').style.display   = tab==='google'   ? '' : 'none';
-  document.getElementById('tab-creative').style.display = tab==='creative' ? '' : 'none';
+  ['overall','meta','creative','google'].forEach(t => {
+    document.getElementById('tabBtn'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', tab===t);
+    document.getElementById('tab-'+t).style.display = tab===t ? '' : 'none';
+  });
   refresh();
 }
 function setStatus(msg, cls='') { const s=document.getElementById('statusText'); s.textContent=msg; s.className='status-text '+cls; }
@@ -619,7 +652,8 @@ async function refresh() {
   showLoading(true);
   setStatus('載入中…');
   try {
-    if (activeTab === 'meta') await renderMeta(curStart, curEnd);
+    if (activeTab === 'overall') await renderOverall(curStart, curEnd);
+    else if (activeTab === 'meta') await renderMeta(curStart, curEnd);
     else if (activeTab === 'creative') await renderCreative(curStart, curEnd);
     else await renderGads(curStart, curEnd);
   } catch (err) {
@@ -942,6 +976,114 @@ function renderAge(ageRows) {
 }
 
 // ══════════ Google Ads ══════════
+let OVERALL_CHART = null, OVERALL_DONUT = null;
+
+async function renderOverall(s, e) {
+  document.getElementById('overallMediaBody').innerHTML = '<tr><td colspan="9" class="loading-cell">載入中…</td></tr>';
+  const se = toApiDate(s), ee = toApiDate(e);
+
+  // fetch Meta (campaign level daily)
+  const [campRes, trendRes] = await Promise.all([
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=1`).then(r=>r.json()),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()),
+  ]);
+  const metaTrend = trendRes.data || [];
+  const metaTot = metaTrend.reduce((a,r)=>{ a.spend+=(r.spend||0); a.impressions+=(r.impressions||0); a.link_clicks+=(r.link_clicks||0); a.purchase+=(r.purchase||0); a.purchase_value+=(r.purchase_value||0); return a; }, {spend:0,impressions:0,link_clicks:0,purchase:0,purchase_value:0});
+
+  // fetch Google
+  const gadsAll = await loadGadsData();
+  const gadsRows = gadsAll.filter(r => r.date >= s && r.date <= e);
+  const gadsTot = gadsRows.reduce((a,r)=>{ a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; }, {cost:0,imp:0,clicks:0,purchase:0,revenue:0});
+
+  // KPI cards
+  const totSpend = metaTot.spend + gadsTot.cost;
+  const totBuy   = metaTot.purchase + gadsTot.purchase;
+  const totRev   = metaTot.purchase_value + gadsTot.revenue;
+  const totRoas  = totSpend > 0 ? totRev / totSpend : 0;
+  const totCpa   = totBuy   > 0 ? totSpend / totBuy : 0;
+  const [ps, pe] = getPrevRange(s, e);
+  const metaPrev = (await fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=account&time_increment=all_days`).then(r=>r.json())).data||[];
+  const mp = metaPrev[0]||{};
+  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>{ a.cost+=r.cost; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; },{cost:0,purchase:0,revenue:0});
+  const pSpend = (mp.spend||0)+gadsPrev.cost, pBuy=(mp.purchase||0)+gadsPrev.purchase, pRev=(mp.purchase_value||0)+gadsPrev.revenue;
+  const pRoas = pSpend>0?pRev/pSpend:0, pCpa=pBuy>0?pSpend/pBuy:0;
+
+  document.getElementById('overallMetrics').innerHTML = [
+    {lbl:'合計花費',  val:`NT$${fmtRaw(totSpend)}`,   chg:fmtChg(totSpend,pSpend)},
+    {lbl:'合計購買',  val:fmtN(totBuy),                chg:fmtChg(totBuy,pBuy)},
+    {lbl:'合計營收',  val:`NT$${fmtRaw(totRev)}`,      chg:fmtChg(totRev,pRev)},
+    {lbl:'合計 ROAS', val:totRoas.toFixed(2)+'x',      chg:fmtChg(totRoas,pRoas)},
+    {lbl:'合計 CPA',  val:totBuy>0?`NT$${fmtRaw(totCpa)}`:'-', chg:fmtChg(totCpa,pCpa)},
+  ].map(c=>`<div class="metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}${c.chg}</div></div>`).join('');
+
+  // daily trend — grouped bars Meta/Google + ROAS line
+  const byDate = {};
+  metaTrend.forEach(r => {
+    const d = (r.date_start||'').replace(/-/g,'');
+    if (!byDate[d]) byDate[d] = {meta:0, google:0, metaRev:0, googleRev:0};
+    byDate[d].meta += (r.spend||0);
+    byDate[d].metaRev += (r.purchase_value||0);
+  });
+  gadsRows.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date] = {meta:0, google:0, metaRev:0, googleRev:0};
+    byDate[r.date].google += r.cost;
+    byDate[r.date].googleRev += r.revenue;
+  });
+  const dates = Object.keys(byDate).sort();
+  const labels   = dates.map(d => d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8));
+  const metaArr  = dates.map(d => byDate[d].meta);
+  const googleArr= dates.map(d => byDate[d].google);
+  const roasArr  = dates.map(d => { const sp=byDate[d].meta+byDate[d].google, rv=byDate[d].metaRev+byDate[d].googleRev; return sp>0?Math.round(rv/sp*100)/100:0; });
+
+  if (OVERALL_CHART) OVERALL_CHART.destroy();
+  OVERALL_CHART = new Chart(document.getElementById('overallChart'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Meta 花費',   data:metaArr,   backgroundColor:'rgba(66,133,244,0.55)', yAxisID:'y', order:2},
+      {label:'Google 花費', data:googleArr, backgroundColor:'rgba(52,168,83,0.55)',  yAxisID:'y', order:2},
+      {label:'ROAS', data:roasArr, borderColor:'#fbbc04', backgroundColor:'transparent', type:'line', yAxisID:'y2', tension:0.3, pointRadius:3, pointBackgroundColor:'transparent', pointBorderColor:'#fbbc04', borderWidth:1.5, order:1},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{
+        y:  {beginAtZero:true, position:'left',  stacked:false, ticks:{callback:v=>'NT$'+fmtRaw(v)}},
+        y2: {beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>v.toFixed(1)+'x'}},
+      }}
+  });
+
+  // donut
+  if (OVERALL_DONUT) OVERALL_DONUT.destroy();
+  OVERALL_DONUT = new Chart(document.getElementById('overallDonut'), {
+    type:'doughnut',
+    data:{ labels:['Meta','Google'], datasets:[{data:[metaTot.spend, gadsTot.cost], backgroundColor:['#4285f4','#34a853'], borderWidth:1}] },
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{font:{size:11}, boxWidth:14}}}}
+  });
+
+  // media table
+  const metaCtr  = metaTot.impressions>0 ? metaTot.link_clicks/metaTot.impressions*100 : 0;
+  const metaRoas = metaTot.spend>0 ? metaTot.purchase_value/metaTot.spend : 0;
+  const metaCpa  = metaTot.purchase>0 ? metaTot.spend/metaTot.purchase : 0;
+  const gCtr     = gadsTot.imp>0 ? gadsTot.clicks/gadsTot.imp*100 : 0;
+  const gRoas    = gadsTot.cost>0 ? gadsTot.revenue/gadsTot.cost : 0;
+  const gCpa     = gadsTot.purchase>0 ? gadsTot.cost/gadsTot.purchase : 0;
+  const rows = [
+    ['Meta',   metaTot.spend, metaTot.impressions, metaTot.link_clicks, metaCtr, metaTot.purchase, metaTot.purchase_value, metaRoas, metaCpa, '#4285f4'],
+    ['Google', gadsTot.cost,  gadsTot.imp,         gadsTot.clicks,      gCtr,    gadsTot.purchase, gadsTot.revenue,        gRoas,    gCpa,    '#34a853'],
+    ['合計',   totSpend,      metaTot.impressions+gadsTot.imp, metaTot.link_clicks+gadsTot.clicks, totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, totBuy, totRev, totRoas, totCpa, '#555'],
+  ];
+  document.getElementById('overallMediaBody').innerHTML = rows.map(([name,spend,imp,clicks,ctr,buy,rev,roas,cpa,color])=>`<tr>
+    <td style="font-weight:600;color:${color}">${name}</td>
+    <td class="num">NT$${fmtRaw(spend)}</td>
+    <td class="num">${fmtN(imp)}</td>
+    <td class="num">${fmtN(clicks)}</td>
+    <td class="num">${ctr.toFixed(2)}%</td>
+    <td class="num">${fmtN(buy)}</td>
+    <td class="num">NT$${fmtRaw(rev)}</td>
+    <td class="num">${roas.toFixed(2)}x</td>
+    <td class="num">${buy>0?'NT$'+fmtRaw(cpa):'-'}</td>
+  </tr>`).join('');
+}
+
 let GADS_DATA = null;
 async function loadGadsData() {
   if (GADS_DATA) return GADS_DATA;
