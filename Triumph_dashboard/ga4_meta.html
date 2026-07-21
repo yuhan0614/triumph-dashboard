@@ -1009,12 +1009,12 @@ async function renderOverall(s, e) {
   const pRoas = pSpend>0?pRev/pSpend:0, pCpa=pBuy>0?pSpend/pBuy:0;
 
   document.getElementById('overallMetrics').innerHTML = [
-    {lbl:'合計花費',  val:`NT$${fmtRaw(totSpend)}`,   chg:fmtChg(totSpend,pSpend)},
-    {lbl:'合計購買',  val:fmtN(totBuy),                chg:fmtChg(totBuy,pBuy)},
-    {lbl:'合計營收',  val:`NT$${fmtRaw(totRev)}`,      chg:fmtChg(totRev,pRev)},
-    {lbl:'合計 ROAS', val:totRoas.toFixed(2)+'x',      chg:fmtChg(totRoas,pRoas)},
-    {lbl:'合計 CPA',  val:totBuy>0?`NT$${fmtRaw(totCpa)}`:'-', chg:fmtChg(totCpa,pCpa)},
-  ].map(c=>`<div class="col-6 col-md-4 col-xl-auto flex-fill"><div class="card p-3 metric-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}${c.chg}</div></div></div>`).join('');
+    {cls:'c-blue',  lbl:'合計花費', val:fmtM(totSpend),                              sub:fmtChg(totSpend,pSpend)},
+    {cls:'c-teal',  lbl:'合計購買', val:fmtN(totBuy),                                sub:fmtChg(totBuy,pBuy)},
+    {cls:'c-green', lbl:'合計營收', val:fmtM(totRev),                                sub:fmtChg(totRev,pRev)},
+    {cls:'c-orange',lbl:'合計 ROAS',val:totRoas.toFixed(2)+'x',                      sub:fmtChg(totRoas,pRoas)},
+    {cls:'',        lbl:'合計 CPA', val:totBuy>0?fmtM(totCpa):'<span class="na">—</span>', sub:fmtChg(totCpa,pCpa)},
+  ].map(c=>`<div class="sc ${c.cls}"><div class="lbl">${c.lbl}</div><div class="val">${c.val}</div><div class="sub">${c.sub}</div></div>`).join('');
 
   // daily trend — grouped bars Meta/Google + ROAS line
   const byDate = {};
