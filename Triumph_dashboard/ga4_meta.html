@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Triumph 成效儀表板</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>Chart.register(ChartDataLabels);</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
@@ -141,8 +143,8 @@
 
 <div class="tabs">
   <div class="tab active" id="tabBtnOverall" onclick="switchTab('overall')">🔴 媒體總成效</div>
-  <div class="tab" id="tabBtnMeta" onclick="switchTab('meta')"><svg width="16" height="16" viewBox="0 0 36 36" style="margin-right:5px;vertical-align:-2px" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="4" fill="#0866FF"/><path d="M22.676 19.001c0 2.198-1.335 3.75-3.245 3.75-1.11 0-1.76-.484-2.245-1.086l-.033 4.835H14.8l.097-11.75h2.285l.08.952c.497-.638 1.17-1.102 2.27-1.102 1.93 0 3.144 1.564 3.144 4.401zm-2.38.032c0-1.597-.678-2.486-1.78-2.486-1.07 0-1.76.908-1.76 2.486 0 1.578.69 2.487 1.76 2.487 1.102 0 1.78-.89 1.78-2.487z" fill="white"/></svg>Meta 廣告</div>
-  <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')"><svg width="16" height="16" viewBox="0 0 36 36" style="margin-right:5px;vertical-align:-2px" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="4" fill="#0866FF"/><path d="M22.676 19.001c0 2.198-1.335 3.75-3.245 3.75-1.11 0-1.76-.484-2.245-1.086l-.033 4.835H14.8l.097-11.75h2.285l.08.952c.497-.638 1.17-1.102 2.27-1.102 1.93 0 3.144 1.564 3.144 4.401zm-2.38.032c0-1.597-.678-2.486-1.78-2.486-1.07 0-1.76.908-1.76 2.486 0 1.578.69 2.487 1.76 2.487 1.102 0 1.78-.89 1.78-2.487z" fill="white"/></svg>Meta 素材</div>
+  <div class="tab" id="tabBtnMeta" onclick="switchTab('meta')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg)"/></svg>Meta 廣告</div>
+  <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg2" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg2)"/></svg>Meta 素材</div>
   <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')"><svg width="16" height="16" viewBox="0 0 48 48" style="margin-right:5px;vertical-align:-2px" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.2 0 5.9 1.1 8.1 2.9l6-6C34.5 3.1 29.6 1 24 1 14.8 1 6.9 6.6 3.3 14.6l7 5.4C12 14.1 17.5 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-4 6.8-9.9 6.8-16.9z" /><path fill="#FBBC05" d="M10.3 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7-5.4A23 23 0 0 0 1 24c0 3.7.9 7.2 2.3 10.4l7-5.8z"/><path fill="#34A853" d="M24 47c5.6 0 10.3-1.9 13.7-5.1l-7.3-5.7c-1.9 1.3-4.2 2-6.4 2-6.5 0-12-4.6-13.9-10.8l-7 5.8C6.9 41.4 14.8 47 24 47z"/><path fill="none" d="M1 1h46v46H1z"/></svg>Google 廣告</div>
 </div>
 
@@ -200,6 +202,7 @@
           <thead><tr>
             <th>媒體</th>
             <th class="num">花費</th>
+            <th class="num">花費佔比</th>
             <th class="num">曝光</th>
             <th class="num">點擊</th>
             <th class="num">CTR</th>
@@ -208,7 +211,7 @@
             <th class="num">ROAS</th>
             <th class="num">CPA</th>
           </tr></thead>
-          <tbody id="overallMediaBody"><tr><td colspan="9" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="overallMediaBody"><tr><td colspan="10" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1044,7 +1047,21 @@ async function renderOverall(s, e) {
       {type:'line', label:'ROAS', data:roasArr, borderColor:'#fbbc04', backgroundColor:'transparent', yAxisID:'y2', tension:0.3, pointRadius:3, pointBackgroundColor:'transparent', pointBorderColor:'#fbbc04', borderWidth:2, order:1},
     ]},
     options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'top', labels:{boxWidth:14, font:{size:11}}}},
+      plugins:{
+        legend:{position:'top', labels:{boxWidth:14, font:{size:11}}},
+        datalabels:{
+          display: ctx => ctx.dataset.type !== 'line' && ctx.raw > 0,
+          formatter: (val, ctx) => {
+            const ds = ctx.chart.data.datasets;
+            const total = ds.filter(d=>d.type==='bar').reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
+            return total > 0 ? (val/total*100).toFixed(0)+'%' : '';
+          },
+          color: '#fff',
+          font: {size:10, weight:'bold'},
+          anchor: 'center',
+          align: 'center',
+        }
+      },
       scales:{
         x:  {stacked:true, grid:{display:false}, ticks:{font:{size:10}, maxTicksLimit:12}},
         y:  {beginAtZero:true, position:'left',  stacked:true, grid:{color:'#f0f2f5'}, ticks:{callback:v=>'NT$'+fmtRaw(v), font:{size:10}}},
@@ -1072,9 +1089,11 @@ async function renderOverall(s, e) {
     ['Google', gadsTot.cost,  gadsTot.imp,         gadsTot.clicks,      gCtr,    gadsTot.purchase, gadsTot.revenue,        gRoas,    gCpa,    '#34a853'],
     ['合計',   totSpend,      metaTot.impressions+gadsTot.imp, metaTot.link_clicks+gadsTot.clicks, totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, totBuy, totRev, totRoas, totCpa, '#555'],
   ];
+  const totalSpend2 = rows[rows.length-1][1];
   document.getElementById('overallMediaBody').innerHTML = rows.map(([name,spend,imp,clicks,ctr,buy,rev,roas,cpa,color])=>`<tr>
     <td style="font-weight:600;color:${color}">${name}</td>
     <td class="num">NT$${fmtRaw(spend)}</td>
+    <td class="num">${name==='合計'?'100%':(totalSpend2>0?(spend/totalSpend2*100).toFixed(1)+'%':'-')}</td>
     <td class="num">${fmtN(imp)}</td>
     <td class="num">${fmtN(clicks)}</td>
     <td class="num">${ctr.toFixed(2)}%</td>
