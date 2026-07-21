@@ -9,19 +9,19 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
 
-  .header { background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%); color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header { background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%); color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position:sticky; top:0; z-index:100; }
   .header-left { display: flex; align-items: center; gap: 12px; }
   .header-badge { background: rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
   .header-title h1 { font-size: 20px; font-weight: 700; }
   .header-title p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
   .header-right { font-size: 12px; opacity: 0.85; text-align: right; line-height: 1.7; }
 
-  .tabs { background: white; border-bottom: 1px solid #e4e6ea; padding: 0 24px; display: flex; gap: 4px; }
+  .tabs { background: white; border-bottom: 1px solid #e4e6ea; padding: 0 24px; display: flex; gap: 4px; position:sticky; top:73px; z-index:99; }
   .tab { padding: 14px 22px; font-size: 14px; font-weight: 600; color: #65676b; cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.15s; }
   .tab:hover { color: #1677ff; }
   .tab.active { color: #1677ff; border-bottom-color: #1677ff; }
 
-  .controls { background: white; border-bottom: 1px solid #e4e6ea; padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .controls { background: white; border-bottom: 1px solid #e4e6ea; padding: 12px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position:sticky; top:121px; z-index:98; }
   .preset-btns { display: flex; gap: 6px; }
   .preset-btn { padding: 5px 14px; border: 1.5px solid #e4e6ea; border-radius: 20px; background: white; font-size: 12px; cursor: pointer; color: #555; transition: all 0.15s; font-weight: 500; }
   .preset-btn:hover { background: #e6f4ff; border-color: #1677ff; color: #1677ff; }
