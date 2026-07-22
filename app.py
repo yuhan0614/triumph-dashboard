@@ -5,6 +5,9 @@ import requests as http_requests
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from meta_api import ACCOUNTS, get_insights, BASE_URL
+from google.analytics.data_v1beta import BetaAnalyticsDataClient
+from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension
+from google.oauth2.credentials import Credentials
 
 load_dotenv()
 app = Flask(__name__, static_folder='Triumph_dashboard', static_url_path='/Triumph_dashboard')
@@ -19,6 +22,63 @@ TRIUMPH_CREATIVES = os.environ.get(
 )
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
+GA4_PROPERTY = "178359594"
+
+def ga4_client():
+    creds = Credentials(
+        token=None,
+        refresh_token=os.environ.get("GA4_REFRESH_TOKEN"),
+        client_id=os.environ.get("GA4_CLIENT_ID"),
+        client_secret=os.environ.get("GA4_CLIENT_SECRET"),
+        token_uri="https://oauth2.googleapis.com/token",
+    )
+    return BetaAnalyticsDataClient(credentials=creds)
+
+@app.route("/api/ga4")
+def api_ga4():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="date")],
+            metrics=[
+                Metric(name="sessions"),
+                Metric(name="activeUsers"),
+                Metric(name="screenPageViews"),
+                Metric(name="conversions"),
+                Metric(name="totalRevenue"),
+                Metric(name="bounceRate"),
+                Metric(name="averageSessionDuration"),
+                Metric(name="newUsers"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            d = row.dimension_values[0].value
+            m = row.metric_values
+            rows.append({
+                "date":        f"{d[:4]}-{d[4:6]}-{d[6:]}",
+                "sessions":    int(m[0].value),
+                "users":       int(m[1].value),
+                "pageviews":   int(m[2].value),
+                "conversions": float(m[3].value),
+                "revenue":     float(m[4].value),
+                "bounce_rate": float(m[5].value),
+                "avg_session": float(m[6].value),
+                "new_users":   int(m[7].value),
+            })
+        rows.sort(key=lambda x: x["date"])
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def taipei_now():
     return datetime.now(TZ_TAIPEI).strftime("%Y-%m-%d %H:%M")
