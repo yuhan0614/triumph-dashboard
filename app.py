@@ -80,6 +80,61 @@ def api_ga4():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+SOURCE_MAP = {
+    ("facebookwm", "soc"): "Meta",
+    ("google",     "cpc"): "Google",
+}
+
+@app.route("/api/ga4/sources")
+def api_ga4_sources():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[
+                Dimension(name="date"),
+                Dimension(name="sessionSource"),
+                Dimension(name="sessionMedium"),
+            ],
+            metrics=[
+                Metric(name="sessions"),
+                Metric(name="activeUsers"),
+                Metric(name="conversions"),
+                Metric(name="totalRevenue"),
+            ],
+        )
+        resp = client.run_report(req)
+
+        by_channel = {}
+        for row in resp.rows:
+            d      = row.dimension_values[0].value
+            source = row.dimension_values[1].value.lower()
+            medium = row.dimension_values[2].value.lower()
+            channel = SOURCE_MAP.get((source, medium))
+            if not channel:
+                continue
+            m = row.metric_values
+            date_str = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+            key = (date_str, channel)
+            if key not in by_channel:
+                by_channel[key] = {"date": date_str, "channel": channel, "sessions": 0, "users": 0, "conversions": 0.0, "revenue": 0.0}
+            by_channel[key]["sessions"]    += int(m[0].value)
+            by_channel[key]["users"]       += int(m[1].value)
+            by_channel[key]["conversions"] += float(m[2].value)
+            by_channel[key]["revenue"]     += float(m[3].value)
+
+        rows = sorted(by_channel.values(), key=lambda x: (x["date"], x["channel"]))
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 def taipei_now():
     return datetime.now(TZ_TAIPEI).strftime("%Y-%m-%d %H:%M")
 
