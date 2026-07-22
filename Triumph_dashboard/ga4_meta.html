@@ -59,10 +59,25 @@
   .c-green .val { color: #52c41a; }
   .c-red .val { color: #f5222d; }
 
-  .metrics-section { margin-bottom: 8px; }
-  .metrics-section-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-left: 2px; }
-  .summary-grid-spend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 8px; }
-  .summary-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 8px; }
+  .overall-kpi { display: grid; grid-template-columns: 180px 1fr; gap: 12px; margin-bottom: 20px; align-items: stretch; }
+  .overall-kpi-spend { display: flex; flex-direction: column; justify-content: center; }
+  .overall-kpi-spend .sc { height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .overall-kpi-right { display: flex; flex-direction: column; gap: 8px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kpi-row-label { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; padding-left: 2px; }
+  .sc-sm { background: white; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .sc-sm .lbl { font-size: 10px; color: #65676b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+  .sc-sm .val { font-size: 17px; font-weight: 700; white-space: nowrap; }
+  .sc-sm .sub { font-size: 10px; color: #999; margin-top: 3px; }
+  .sc-sm.c-teal .val { color: #13c2c2; }
+  .sc-sm.c-green .val { color: #52c41a; }
+  .sc-sm.c-orange .val { color: #fa8c16; }
+  .sc-sm.c-red .val { color: #f5222d; }
+  .kpi-row.ga4-row .sc-sm { border-top: 2px solid #fff0f0; }
+  .kpi-row.ga4-row .sc-sm.c-teal .val { color: #f5222d; }
+  .kpi-row.ga4-row .sc-sm.c-green .val { color: #f5222d; opacity:.85; }
+  .kpi-row.ga4-row .sc-sm.c-red .val { color: #f5222d; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 
   .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
   .charts-row-2 { grid-template-columns: 1fr 1fr; }
@@ -189,18 +204,17 @@
 
   <!-- ══════════ 媒體總成效 ══════════ -->
   <div id="tab-overall">
-    <div id="overallMetrics">
-      <div class="metrics-section">
-        <div class="metrics-section-label">💰 花費</div>
-        <div class="summary-grid-spend" id="overallSpendCards"></div>
-      </div>
-      <div class="metrics-section">
-        <div class="metrics-section-label">📢 廣告成效</div>
-        <div class="summary-grid-4" id="overallAdCards"></div>
-      </div>
-      <div class="metrics-section">
-        <div class="metrics-section-label">📊 GA4 成效</div>
-        <div class="summary-grid-4" id="overallGa4Cards"></div>
+    <div class="overall-kpi">
+      <div class="overall-kpi-spend" id="overallSpendCards"></div>
+      <div class="overall-kpi-right">
+        <div>
+          <div class="kpi-row-label">📢 廣告成效</div>
+          <div class="kpi-row" id="overallAdCards"></div>
+        </div>
+        <div>
+          <div class="kpi-row-label">📊 GA4 成效</div>
+          <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
+        </div>
       </div>
     </div>
     <div class="charts-row">
@@ -1057,20 +1071,21 @@ async function renderOverall(s, e) {
   const pGa4Roas = pSpend>0 ? ga4PrevTot.revenue/pSpend : 0;
   const pGa4Cpa  = ga4PrevTot.purchases>0 ? pSpend/ga4PrevTot.purchases : 0;
 
-  const sc = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+  const sc    = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+  const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
-    sc('c-blue','合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
+    sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
   document.getElementById('overallAdCards').innerHTML = [
-    sc('c-teal',  '廣告購買', fmtN(totBuy),             fmtChg(totBuy,pBuy)),
-    sc('c-green', '廣告營收', fmtM(totRev),             fmtChg(totRev,pRev)),
-    sc('c-orange','廣告ROAS', totRoas.toFixed(2)+'x',   fmtChg(totRoas,pRoas)),
-    sc('',        '廣告CPA',  totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
+    scSm('c-teal',  '購買',  fmtN(totBuy),              fmtChg(totBuy,pBuy)),
+    scSm('c-green', '營收',  fmtM(totRev),              fmtChg(totRev,pRev)),
+    scSm('c-orange','ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
+    scSm('',        'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
-    sc('c-teal',  'GA4 購買', fmtN(ga4Tot.purchases),   fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
-    sc('c-green', 'GA4 營收', fmtM(ga4Tot.revenue),       fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
-    sc('c-red',   'GA4 ROAS', ga4Roas.toFixed(2)+'x',     fmtChg(ga4Roas,pGa4Roas)),
-    sc('',        'GA4 CPA',  ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
+    scSm('c-teal',  '購買',  fmtN(ga4Tot.purchases),             fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
+    scSm('c-green', '營收',  fmtM(ga4Tot.revenue),               fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
+    scSm('c-red',   'ROAS',  ga4Roas.toFixed(2)+'x',             fmtChg(ga4Roas,pGa4Roas)),
+    scSm('',        'CPA',   ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
   ].join('');
 
   // daily trend
