@@ -1022,15 +1022,15 @@ async function renderOverall(s, e) {
   const ga4Rows = ga4Res.data || [];
   const ga4ByChannel = {};
   ga4Rows.forEach(r => {
-    if (!ga4ByChannel[r.channel]) ga4ByChannel[r.channel] = {sessions:0, conversions:0, revenue:0};
+    if (!ga4ByChannel[r.channel]) ga4ByChannel[r.channel] = {sessions:0, purchases:0, revenue:0};
     ga4ByChannel[r.channel].sessions    += r.sessions;
-    ga4ByChannel[r.channel].conversions += r.conversions;
+    ga4ByChannel[r.channel].purchases += r.purchases;
     ga4ByChannel[r.channel].revenue     += r.revenue;
   });
-  const ga4Meta   = ga4ByChannel['Meta']   || {sessions:0, conversions:0, revenue:0};
-  const ga4Google = ga4ByChannel['Google'] || {sessions:0, conversions:0, revenue:0};
+  const ga4Meta   = ga4ByChannel['Meta']   || {sessions:0, purchases:0, revenue:0};
+  const ga4Google = ga4ByChannel['Google'] || {sessions:0, purchases:0, revenue:0};
   const ga4Tot = {
-    conversions: ga4Meta.conversions + ga4Google.conversions,
+    purchases: ga4Meta.purchases + ga4Google.purchases,
     revenue:     ga4Meta.revenue     + ga4Google.revenue,
   };
 
@@ -1041,7 +1041,7 @@ async function renderOverall(s, e) {
   const totRoas  = totSpend > 0 ? totRev / totSpend : 0;
   const totCpa   = totBuy   > 0 ? totSpend / totBuy : 0;
   const ga4Roas  = totSpend > 0 ? ga4Tot.revenue / totSpend : 0;
-  const ga4Cpa   = ga4Tot.conversions > 0 ? totSpend / ga4Tot.conversions : 0;
+  const ga4Cpa   = ga4Tot.purchases > 0 ? totSpend / ga4Tot.purchases : 0;
 
   const [ps, pe] = getPrevRange(s, e);
   const [metaPrevRes, ga4PrevRes] = await Promise.all([
@@ -1053,9 +1053,9 @@ async function renderOverall(s, e) {
   const pSpend = (mp.spend||0)+gadsPrev.cost, pBuy=(mp.purchase||0)+gadsPrev.purchase, pRev=(mp.purchase_value||0)+gadsPrev.revenue;
   const pRoas  = pSpend>0?pRev/pSpend:0, pCpa=pBuy>0?pSpend/pBuy:0;
   const ga4PrevRows = ga4PrevRes.data || [];
-  const ga4PrevTot  = ga4PrevRows.reduce((a,r)=>{ a.conversions+=r.conversions; a.revenue+=r.revenue; return a; },{conversions:0,revenue:0});
+  const ga4PrevTot  = ga4PrevRows.reduce((a,r)=>{ a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{purchases:0,revenue:0});
   const pGa4Roas = pSpend>0 ? ga4PrevTot.revenue/pSpend : 0;
-  const pGa4Cpa  = ga4PrevTot.conversions>0 ? pSpend/ga4PrevTot.conversions : 0;
+  const pGa4Cpa  = ga4PrevTot.purchases>0 ? pSpend/ga4PrevTot.purchases : 0;
 
   const sc = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
@@ -1067,10 +1067,10 @@ async function renderOverall(s, e) {
     sc('',        '廣告CPA',  totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
-    sc('c-teal',  'GA4 購買', fmtN(ga4Tot.conversions),   fmtChg(ga4Tot.conversions,ga4PrevTot.conversions)),
+    sc('c-teal',  'GA4 購買', fmtN(ga4Tot.purchases),   fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
     sc('c-green', 'GA4 營收', fmtM(ga4Tot.revenue),       fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
     sc('c-red',   'GA4 ROAS', ga4Roas.toFixed(2)+'x',     fmtChg(ga4Roas,pGa4Roas)),
-    sc('',        'GA4 CPA',  ga4Tot.conversions>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
+    sc('',        'GA4 CPA',  ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
   ].join('');
 
   // daily trend
@@ -1147,16 +1147,16 @@ async function renderOverall(s, e) {
   const gRoas     = gadsTot.cost>0 ? gadsTot.revenue/gadsTot.cost : 0;
   const gCpa      = gadsTot.purchase>0 ? gadsTot.cost/gadsTot.purchase : 0;
   const ga4MetaRoas   = metaTot.spend>0 ? ga4Meta.revenue/metaTot.spend : 0;
-  const ga4MetaCpa    = ga4Meta.conversions>0 ? metaTot.spend/ga4Meta.conversions : 0;
+  const ga4MetaCpa    = ga4Meta.purchases>0 ? metaTot.spend/ga4Meta.purchases : 0;
   const ga4GoogleRoas = gadsTot.cost>0 ? ga4Google.revenue/gadsTot.cost : 0;
-  const ga4GoogleCpa  = ga4Google.conversions>0 ? gadsTot.cost/ga4Google.conversions : 0;
+  const ga4GoogleCpa  = ga4Google.purchases>0 ? gadsTot.cost/ga4Google.purchases : 0;
   const ga4TotRoas    = totSpend>0 ? ga4Tot.revenue/totSpend : 0;
-  const ga4TotCpa     = ga4Tot.conversions>0 ? totSpend/ga4Tot.conversions : 0;
+  const ga4TotCpa     = ga4Tot.purchases>0 ? totSpend/ga4Tot.purchases : 0;
 
   const tableRows = [
-    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, buy:metaTot.purchase, rev:metaTot.purchase_value, roas:metaRoas, cpa:metaCpa, g4buy:ga4Meta.conversions, g4rev:ga4Meta.revenue, g4roas:ga4MetaRoas, g4cpa:ga4MetaCpa},
-    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp,         clicks:gadsTot.clicks,      ctr:gCtr,    buy:gadsTot.purchase, rev:gadsTot.revenue,        roas:gRoas,    cpa:gCpa,    g4buy:ga4Google.conversions, g4rev:ga4Google.revenue, g4roas:ga4GoogleRoas, g4cpa:ga4GoogleCpa},
-    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.conversions, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa},
+    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, buy:metaTot.purchase, rev:metaTot.purchase_value, roas:metaRoas, cpa:metaCpa, g4buy:ga4Meta.purchases, g4rev:ga4Meta.revenue, g4roas:ga4MetaRoas, g4cpa:ga4MetaCpa},
+    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp,         clicks:gadsTot.clicks,      ctr:gCtr,    buy:gadsTot.purchase, rev:gadsTot.revenue,        roas:gRoas,    cpa:gCpa,    g4buy:ga4Google.purchases, g4rev:ga4Google.revenue, g4roas:ga4GoogleRoas, g4cpa:ga4GoogleCpa},
+    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.purchases, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa},
   ];
   const totalSpend2 = totSpend;
   document.getElementById('overallMediaBody').innerHTML = tableRows.map(r=>`<tr>

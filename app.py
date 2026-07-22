@@ -106,7 +106,7 @@ def api_ga4_sources():
             metrics=[
                 Metric(name="sessions"),
                 Metric(name="activeUsers"),
-                Metric(name="conversions"),
+                Metric(name="ecommercePurchases"),
                 Metric(name="totalRevenue"),
             ],
         )
@@ -124,11 +124,11 @@ def api_ga4_sources():
             date_str = f"{d[:4]}-{d[4:6]}-{d[6:]}"
             key = (date_str, channel)
             if key not in by_channel:
-                by_channel[key] = {"date": date_str, "channel": channel, "sessions": 0, "users": 0, "conversions": 0.0, "revenue": 0.0}
-            by_channel[key]["sessions"]    += int(m[0].value)
-            by_channel[key]["users"]       += int(m[1].value)
-            by_channel[key]["conversions"] += float(m[2].value)
-            by_channel[key]["revenue"]     += float(m[3].value)
+                by_channel[key] = {"date": date_str, "channel": channel, "sessions": 0, "users": 0, "purchases": 0, "revenue": 0.0}
+            by_channel[key]["sessions"]  += int(m[0].value)
+            by_channel[key]["users"]     += int(m[1].value)
+            by_channel[key]["purchases"] += int(float(m[2].value))
+            by_channel[key]["revenue"]   += float(m[3].value)
 
         rows = sorted(by_channel.values(), key=lambda x: (x["date"], x["channel"]))
         return jsonify({"data": rows})
