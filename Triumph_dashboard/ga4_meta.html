@@ -1017,6 +1017,14 @@ function renderAge(ageRows) {
 // ══════════ Google Ads ══════════
 let OVERALL_CHART = null, OVERALL_DONUT = null;
 
+function toggleDetail(channel) {
+  const rows = document.querySelectorAll(`.detail-${channel}`);
+  const btn  = document.getElementById(`expand-${channel}`);
+  const open = rows[0] && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : '');
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
+
 async function renderOverall(s, e) {
   document.getElementById('overallMediaBody').innerHTML = '<tr><td colspan="14" class="loading-cell">載入中…</td></tr>';
   const se = toApiDate(s), ee = toApiDate(e);
@@ -1190,10 +1198,20 @@ async function renderOverall(s, e) {
   const allKeys = [...new Set([...Object.keys(metaByKey), ...Object.keys(gads4ByKey)])].sort();
 
   function detailRows(channel, color) {
-    const map = channel==='Meta' ? metaByKey : gads4ByKey;
+    const map = channel==='合計'
+      ? Object.fromEntries(allKeys.map(k => {
+          const m = metaByKey[k]||{spend:0,imp:0,clicks:0,buy:0,rev:0};
+          const g = gads4ByKey[k]||{spend:0,imp:0,clicks:0,buy:0,rev:0};
+          return [k, {spend:m.spend+g.spend, imp:m.imp+g.imp, clicks:m.clicks+g.clicks, buy:m.buy+g.buy, rev:m.rev+g.rev}];
+        }))
+      : channel==='Meta' ? metaByKey : gads4ByKey;
     return allKeys.map(k => {
       const v = map[k] || {spend:0,imp:0,clicks:0,buy:0,rev:0};
-      const g4 = (ga4ByKey[k]||{})[channel] || {purchases:0,revenue:0};
+      const g4m = (ga4ByKey[k]||{})['Meta']    || {purchases:0,revenue:0};
+      const g4g = (ga4ByKey[k]||{})['Google']  || {purchases:0,revenue:0};
+      const g4 = channel==='合計'
+        ? {purchases: g4m.purchases+g4g.purchases, revenue: g4m.revenue+g4g.revenue}
+        : (ga4ByKey[k]||{})[channel] || {purchases:0,revenue:0};
       const ctr  = v.imp>0 ? v.clicks/v.imp*100 : 0;
       const roas = v.spend>0 ? v.rev/v.spend : 0;
       const cpa  = v.buy>0 ? v.spend/v.buy : 0;
@@ -1219,18 +1237,11 @@ async function renderOverall(s, e) {
     }).join('');
   }
 
-  function toggleDetail(channel) {
-    const rows = document.querySelectorAll(`.detail-${channel}`);
-    const btn  = document.getElementById(`expand-${channel}`);
-    const open = rows[0] && rows[0].style.display !== 'none';
-    rows.forEach(r => r.style.display = open ? 'none' : '');
-    if (btn) btn.textContent = open ? '▶' : '▼';
-  }
 
   const tableRows = [
     {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, buy:metaTot.purchase, rev:metaTot.purchase_value, roas:metaRoas, cpa:metaCpa, g4buy:ga4Meta.purchases, g4rev:ga4Meta.revenue, g4roas:ga4MetaRoas, g4cpa:ga4MetaCpa, expand:true},
     {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp,         clicks:gadsTot.clicks,      ctr:gCtr,    buy:gadsTot.purchase, rev:gadsTot.revenue,        roas:gRoas,    cpa:gCpa,    g4buy:ga4Google.purchases, g4rev:ga4Google.revenue, g4roas:ga4GoogleRoas, g4cpa:ga4GoogleCpa, expand:true},
-    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.purchases, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa, expand:false},
+    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.purchases, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa, expand:true},
   ];
   const totalSpend2 = totSpend;
 
