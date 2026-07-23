@@ -644,9 +644,16 @@ function groupKey(dateStr) {
   }
   return dateStr;
 }
-function groupLabel(k) {
+function groupLabel(k, rangeEnd) {
   if (grp === 'M') return k.slice(0,4)+'/'+k.slice(4,6);
-  return k.slice(0,4)+'/'+k.slice(4,6)+'/'+k.slice(6,8);
+  if (grp === 'W') {
+    const sun = new Date(toDate(k)); sun.setDate(sun.getDate() + 6);
+    const endStr = toStr(sun);
+    const s = k.slice(4,6)+'/'+k.slice(6,8);
+    const e = endStr.slice(4,6)+'/'+endStr.slice(6,8);
+    return s+'~'+e;
+  }
+  return k.slice(4,6)+'/'+k.slice(6,8);
 }
 function getPrevRange(s, e) {
   const sd = toDate(s), ed = toDate(e);
@@ -1250,7 +1257,7 @@ async function renderOverall(s, e) {
     const nameCell = r.expand
       ? `<span id="expand-${r.name}" onclick="toggleDetail('${r.name}')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="font-weight:600;color:${r.color}">${r.name}</span>`
       : `<span style="font-weight:600;color:${r.color}">${r.name}</span>`;
-    html += `<tr>
+    html += `<tr style="font-weight:700">
       <td>${nameCell}</td>
       <td class="num">NT$${fmtRaw(r.spend)}</td>
       <td class="num">${r.name==='合計'?'100%':(totalSpend2>0?(r.spend/totalSpend2*100).toFixed(1)+'%':'-')}</td>
