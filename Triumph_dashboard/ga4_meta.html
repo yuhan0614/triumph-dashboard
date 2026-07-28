@@ -203,36 +203,36 @@
 
   <!-- ══════════ 媒體總成效 ══════════ -->
   <div id="tab-overall">
-    <div class="overall-kpi">
-      <div class="overall-kpi-spend" id="overallSpendCards"></div>
-      <div class="overall-kpi-right">
-        <div>
-          <div class="kpi-row-label">📢 廣告成效</div>
-          <div class="kpi-row" id="overallAdCards"></div>
-        </div>
-        <div>
-          <div class="kpi-row-label">📊 GA4 成效</div>
-          <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
-        </div>
-      </div>
+    <!-- 合計 KPI block -->
+    <div class="channel-kpi-block" style="background:#fff;border:1.5px solid #e8e8e8">
+      <div class="channel-kpi-header" style="color:#222">🔴 媒體總成效</div>
+      <div class="channel-kpi-spend" id="overallSpendCards"></div>
+      <div class="kpi-row-label" style="margin-top:10px">📢 廣告成效</div>
+      <div class="kpi-row" id="overallAdCards" style="margin-bottom:10px"></div>
+      <div class="kpi-row-label">📊 GA4 成效</div>
+      <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
     </div>
     <!-- Meta / Google individual KPI cards -->
-    <div class="channel-kpi-block" id="metaKpiBlock">
+    <div class="channel-kpi-block" id="metaKpiBlock" style="background:#f0f2f7">
       <div class="channel-kpi-header" style="color:#4285f4">
         <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px"><defs><linearGradient id="mgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0081FB"/><stop offset="100%" stop-color="#0064E0"/></linearGradient></defs><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4.5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 11c-2.51 0-4.72-1.28-6-3.22.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08c-1.28 1.94-3.49 3.22-6 3.22z" fill="url(#mgA)"/></svg>
         Meta
       </div>
       <div class="channel-kpi-spend" id="metaChannelSpend"></div>
-      <div class="kpi-row" id="metaAdCards"></div>
+      <div class="kpi-row-label" style="margin-top:10px">📢 廣告成效</div>
+      <div class="kpi-row" id="metaAdCards" style="margin-bottom:10px"></div>
+      <div class="kpi-row-label">📊 GA4 成效</div>
       <div class="kpi-row ga4-row" id="metaGa4Cards"></div>
     </div>
-    <div class="channel-kpi-block" id="googleKpiBlock">
+    <div class="channel-kpi-block" id="googleKpiBlock" style="background:#f0f2f7">
       <div class="channel-kpi-header" style="color:#34a853">
         <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px"><path d="M21.35 11.1H12v2.8h5.35C16.7 16.45 14.58 18 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.48 0 2.83.54 3.87 1.41L17.9 5.38C16.37 4.02 14.29 3.2 12 3.2 7.17 3.2 3.2 7.17 3.2 12S7.17 20.8 12 20.8c4.97 0 8.8-3.5 8.8-8.8 0-.59-.06-1.17-.15-1.7 0-.07-.15-.1-.3-.2z" fill="#4285F4"/><path d="M3.65 7.35l2.3 1.69C6.7 7.25 9.17 5.8 12 5.8c1.48 0 2.83.54 3.87 1.41L17.9 5.38C16.37 4.02 14.29 3.2 12 3.2c-3.7 0-6.87 2.1-8.35 5.15z" fill="#EA4335"/><path d="M12 20.8c2.74 0 5.04-.93 6.71-2.52l-2.42-1.87C15.28 17.43 13.74 18 12 18c-2.57 0-4.68-1.54-5.36-3.95L4.29 15.9C5.77 18.87 8.65 20.8 12 20.8z" fill="#34A853"/><path d="M21.35 11.1H12v2.8h5.35c-.37 1.22-1.14 2.25-2.14 2.95l2.42 1.87C19.38 17.16 20.8 14.76 20.8 12c0-.59-.06-1.17-.15-1.7-.09-.13-.2-.2-.3-.2z" fill="#FBBC05"/></svg>
         Google
       </div>
       <div class="channel-kpi-spend" id="googleChannelSpend"></div>
-      <div class="kpi-row" id="googleAdCards"></div>
+      <div class="kpi-row-label" style="margin-top:10px">📢 廣告成效</div>
+      <div class="kpi-row" id="googleAdCards" style="margin-bottom:10px"></div>
+      <div class="kpi-row-label">📊 GA4 成效</div>
       <div class="kpi-row ga4-row" id="googleGa4Cards"></div>
     </div>
     <div class="charts-row">
@@ -1175,10 +1175,9 @@ async function renderOverall(s, e) {
   const pGa4Cvr  = ga4PrevTot.sessions>0  ? ga4PrevTot.purchases/ga4PrevTot.sessions*100 : 0;
   const pGa4Vpt  = ga4PrevTot.purchases>0 ? ga4PrevTot.revenue/ga4PrevTot.purchases : 0;
 
-  const sc    = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
-    sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
+    `花費 <span class="spend-val">${fmtM(totSpend)}</span> ${fmtChg(totSpend,pSpend)}`;
   const totCplc   = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
   const ga4TotCvr = ga4Tot.sessions>0  ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
   const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
