@@ -52,7 +52,7 @@ def api_ga4():
                 Metric(name="sessions"),
                 Metric(name="activeUsers"),
                 Metric(name="screenPageViews"),
-                Metric(name="addToCarts"),
+                Metric(name="keyEvents:add_to_cart"),
                 Metric(name="ecommercePurchases"),
                 Metric(name="totalRevenue"),
                 Metric(name="bounceRate"),
@@ -99,7 +99,7 @@ def api_ga4_daily_channels():
             dimensions=[Dimension(name="date"), Dimension(name="sessionDefaultChannelGrouping")],
             metrics=[
                 Metric(name="sessions"),
-                Metric(name="addToCarts"),
+                Metric(name="keyEvents:add_to_cart"),
                 Metric(name="ecommercePurchases"),
                 Metric(name="totalRevenue"),
                 Metric(name="averageSessionDuration"),
@@ -142,7 +142,7 @@ def api_ga4_daily_sources():
             dimensions=[Dimension(name="date"), Dimension(name="sessionSourceMedium")],
             metrics=[
                 Metric(name="sessions"),
-                Metric(name="addToCarts"),
+                Metric(name="keyEvents:add_to_cart"),
                 Metric(name="ecommercePurchases"),
                 Metric(name="totalRevenue"),
                 Metric(name="averageSessionDuration"),
@@ -185,7 +185,7 @@ def api_ga4_items():
             dimensions=[Dimension(name="date"), Dimension(name="itemName")],
             metrics=[
                 Metric(name="itemsViewed"),
-                Metric(name="addToCarts"),
+                Metric(name="keyEvents:add_to_cart"),
                 Metric(name="itemsPurchased"),
                 Metric(name="itemRevenue"),
             ],
