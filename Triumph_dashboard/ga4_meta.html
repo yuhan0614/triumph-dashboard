@@ -724,19 +724,20 @@ async function fetchMeta(s, e) {
   const since = toApiDate(s), until = toApiDate(e);
   const [ps, pe] = getPrevRange(s, e);
   const base = window.location.origin;
-  const [campRes, trendRes, ageRes, prevRes, adsetRes] = await Promise.all([
+  const [campRes, trendRes, ageRes, prevRes, adsetRes, campDailyRes] = await Promise.all([
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=1`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=all_days&breakdowns=age`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=account&time_increment=all_days`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=adset&time_increment=all_days`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=1`).then(r=>r.json()),
   ]);
-  return { camp: campRes.data||[], trend: trendRes.data||[], age: ageRes.data||[], prev: prevRes.data||[], adset: adsetRes.data||[], updated: campRes.updated };
+  return { camp: campRes.data||[], trend: trendRes.data||[], age: ageRes.data||[], prev: prevRes.data||[], adset: adsetRes.data||[], campDaily: campDailyRes.data||[], updated: campRes.updated };
 }
 
 async function renderMeta(s, e) {
   document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="12" class="loading-cell">載入 Meta 資料中…</td></tr>';
-  const { camp, trend, age, prev, adset, updated } = await fetchMeta(s, e);
+  const { camp, trend, age, prev, adset, campDaily, updated } = await fetchMeta(s, e);
 
   const sumRows = rows => rows.reduce((a, r) => {
     a.spend += r.spend||0; a.link_clicks += r.link_clicks||0; a.add_to_cart += r.add_to_cart||0;
@@ -772,10 +773,54 @@ async function renderMeta(s, e) {
   document.getElementById('metaUpdated').textContent = updated ? `更新時間 ${updated}` : '';
   META_CAMP = camp; META_ADSET = adset;
   const totalSpend = totals.spend;
-  document.getElementById('metaCampBody').innerHTML = camp
-    .slice().sort((a,b)=>(b.spend||0)-(a.spend||0))
-    .map(r => `<tr><td><span class="cell-name" title="${r.campaign_name||''}">${r.campaign_name||'—'}</span></td>${metaMetricCells(metaAgg([r]), totalSpend)}</tr>`)
-    .join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
+
+  // build campDaily map: campName → groupKey → aggregated
+  const campDailyMap = {};
+  campDaily.forEach(r => {
+    const name = r.campaign_name || '—';
+    const k = groupKey((r.date_start||'').replace(/-/g,''));
+    if (!campDailyMap[name]) campDailyMap[name] = {};
+    if (!campDailyMap[name][k]) campDailyMap[name][k] = {spend:0,impressions:0,link_clicks:0,add_to_cart:0,purchase:0,purchase_value:0};
+    const d = campDailyMap[name][k];
+    d.spend+=r.spend||0; d.impressions+=r.impressions||0; d.link_clicks+=r.link_clicks||0;
+    d.add_to_cart+=r.add_to_cart||0; d.purchase+=r.purchase||0; d.purchase_value+=r.purchase_value||0;
+  });
+
+  const sorted = camp.slice().sort((a,b)=>(b.spend||0)-(a.spend||0));
+  let campHtml = '';
+  sorted.forEach((r, i) => {
+    const name = r.campaign_name || '—';
+    const safeId = 'mc_' + i;
+    campHtml += `<tr>
+      <td>
+        <span id="exp-${safeId}" onclick="toggleMetaCamp('${safeId}')" style="cursor:pointer;margin-right:5px;font-size:11px;color:#aaa">▶</span>
+        <span class="cell-name" title="${name}">${name}</span>
+      </td>
+      ${metaMetricCells(metaAgg([r]), totalSpend)}
+    </tr>`;
+    const keys = Object.keys(campDailyMap[name]||{}).sort();
+    keys.forEach(k => {
+      const v = campDailyMap[name][k];
+      const ctr  = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
+      const cpc  = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+      const rs   = v.spend>0 ? v.purchase_value/v.spend : 0;
+      campHtml += `<tr class="detail-row detail-${safeId}" style="display:none;background:#fafbfc">
+        <td style="padding-left:26px;color:#888;font-size:12px">${groupLabel(k)}</td>
+        <td style="font-size:12px">${fmtM(v.spend)}</td>
+        <td style="font-size:12px">${fmtN(v.impressions)}</td>
+        <td style="font-size:12px">${fmtN(v.link_clicks)}</td>
+        <td style="font-size:12px">${ctr.toFixed(2)}%</td>
+        <td style="font-size:12px">${fmtM(cpc)}</td>
+        <td style="font-size:12px">${fmtN(v.add_to_cart)}</td>
+        <td style="font-size:12px">${fmtN(v.purchase)}</td>
+        <td style="font-size:12px">${v.purchase>0?fmtM(v.spend/v.purchase):'—'}</td>
+        <td style="font-size:12px">${rs.toFixed(2)}</td>
+        <td style="font-size:12px">${fmtM(v.purchase_value)}</td>
+        <td style="font-size:12px">-</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('metaCampBody').innerHTML = campHtml || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('metaDonut', camp.slice().sort((a,b)=>(b.spend||0)-(a.spend||0)).slice(0,8).map(r=>({name:r.campaign_name||'—', val:r.spend||0})));
 
@@ -1033,6 +1078,13 @@ function renderAge(ageRows) {
 // ══════════ Google Ads ══════════
 let OVERALL_CHART = null, OVERALL_DONUT = null, OVERALL_GA4REV_CHART = null, OVERALL_GA4REV_DONUT = null;
 
+function toggleMetaCamp(safeId) {
+  const rows = document.querySelectorAll(`.detail-${safeId}`);
+  const btn  = document.getElementById(`exp-${safeId}`);
+  const open = rows[0] && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : '');
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
 function toggleDetail(channel) {
   const rows = document.querySelectorAll(`.detail-${channel}`);
   const btn  = document.getElementById(`expand-${channel}`);
