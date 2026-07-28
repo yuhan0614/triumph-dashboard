@@ -72,10 +72,16 @@
   .sc-sm.kpi-empty { background: transparent; box-shadow: none; }
   .kpi-row.ga4-row .sc-sm { border-top: 2px solid #fff0f0; }
   .kpi-row.ga4-row .sc-sm.kpi-empty { border-top: none; }
-  .channel-kpi-block { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .channel-kpi-header { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; }
-  .channel-kpi-spend { font-size: 12px; color: #888; margin-bottom: 8px; }
+  .channel-kpi-block { background: #e4e7ee; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .channel-kpi-header { font-size: 13px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; }
+  .channel-kpi-spend { font-size: 12px; color: #666; margin-bottom: 8px; }
   .channel-kpi-spend .spend-val { font-size: 15px; font-weight: 700; color: #222; margin: 0 6px; }
+  .channel-kpi-block .sc-sm { background: rgba(255,255,255,0.62); box-shadow: none; border: 1px solid rgba(255,255,255,0.9); padding: 8px 10px; }
+  .channel-kpi-block .sc-sm .lbl { font-size: 9px; }
+  .channel-kpi-block .sc-sm .val { font-size: 14px; }
+  .channel-kpi-block .sc-sm .sub { font-size: 9px; }
+  .channel-kpi-block .sc-sm.kpi-empty { background: transparent; border: none; box-shadow: none; }
+  .channel-kpi-block .kpi-row.ga4-row .sc-sm { border-top: 2px solid rgba(245,34,45,0.2); }
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 
   .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
@@ -203,14 +209,19 @@
 
   <!-- ══════════ 媒體總成效 ══════════ -->
   <div id="tab-overall">
-    <!-- 合計 KPI block -->
-    <div class="channel-kpi-block" style="background:#fff;border:1.5px solid #e8e8e8">
-      <div class="channel-kpi-header" style="color:#222">🔴 媒體總成效</div>
-      <div class="channel-kpi-spend" id="overallSpendCards"></div>
-      <div class="kpi-row-label" style="margin-top:10px">📢 廣告成效</div>
-      <div class="kpi-row" id="overallAdCards" style="margin-bottom:10px"></div>
-      <div class="kpi-row-label">📊 GA4 成效</div>
-      <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
+    <!-- 合計 KPI -->
+    <div class="overall-kpi">
+      <div class="overall-kpi-spend" id="overallSpendCards"></div>
+      <div class="overall-kpi-right">
+        <div>
+          <div class="kpi-row-label">📢 廣告成效</div>
+          <div class="kpi-row" id="overallAdCards"></div>
+        </div>
+        <div>
+          <div class="kpi-row-label">📊 GA4 成效</div>
+          <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
+        </div>
+      </div>
     </div>
     <!-- Meta / Google individual KPI cards -->
     <div class="channel-kpi-block" id="metaKpiBlock" style="background:#f0f2f7">
@@ -1175,9 +1186,10 @@ async function renderOverall(s, e) {
   const pGa4Cvr  = ga4PrevTot.sessions>0  ? ga4PrevTot.purchases/ga4PrevTot.sessions*100 : 0;
   const pGa4Vpt  = ga4PrevTot.purchases>0 ? ga4PrevTot.revenue/ga4PrevTot.purchases : 0;
 
+  const sc    = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
-    `花費 <span class="spend-val">${fmtM(totSpend)}</span> ${fmtChg(totSpend,pSpend)}`;
+    sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
   const totCplc   = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
   const ga4TotCvr = ga4Tot.sessions>0  ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
   const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
