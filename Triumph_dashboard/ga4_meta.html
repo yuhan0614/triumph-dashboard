@@ -210,18 +210,13 @@
   <!-- ══════════ 媒體總成效 ══════════ -->
   <div id="tab-overall">
     <!-- 合計 KPI -->
-    <div class="overall-kpi">
-      <div class="overall-kpi-spend" id="overallSpendCards"></div>
-      <div class="overall-kpi-right">
-        <div>
-          <div class="kpi-row-label">📢 廣告成效</div>
-          <div class="kpi-row" id="overallAdCards"></div>
-        </div>
-        <div>
-          <div class="kpi-row-label">📊 GA4 成效</div>
-          <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
-        </div>
-      </div>
+    <div class="channel-kpi-block" style="background:#dde0e8;margin-bottom:8px">
+      <div class="channel-kpi-header" style="color:#555">🔴 媒體總成效</div>
+      <div class="channel-kpi-spend" id="overallSpendCards"></div>
+      <div class="kpi-row-label" style="margin-top:10px">📢 廣告成效</div>
+      <div class="kpi-row" id="overallAdCards" style="margin-bottom:10px"></div>
+      <div class="kpi-row-label">📊 GA4 成效</div>
+      <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
     </div>
     <!-- Meta / Google individual KPI cards -->
     <div class="channel-kpi-block" id="metaKpiBlock" style="background:#f0f2f7">
@@ -1186,10 +1181,9 @@ async function renderOverall(s, e) {
   const pGa4Cvr  = ga4PrevTot.sessions>0  ? ga4PrevTot.purchases/ga4PrevTot.sessions*100 : 0;
   const pGa4Vpt  = ga4PrevTot.purchases>0 ? ga4PrevTot.revenue/ga4PrevTot.purchases : 0;
 
-  const sc    = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
-    sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
+    `花費 <span class="spend-val">${fmtM(totSpend)}</span> ${fmtChg(totSpend,pSpend)}`;
   const totCplc   = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
   const ga4TotCvr = ga4Tot.sessions>0  ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
   const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
