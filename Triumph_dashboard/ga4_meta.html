@@ -1314,29 +1314,28 @@ async function renderOverall(s, e) {
   document.getElementById('googleAdCards').innerHTML = gCards.ad;
   document.getElementById('googleGa4Cards').innerHTML = gCards.ga4;
 
-  // daily trend
+  // trend chart grouped by grp setting
   const byDate = {};
   metaTrend.forEach(r => {
-    const d = (r.date_start||'').replace(/-/g,'');
-    if (!byDate[d]) byDate[d] = {meta:0, google:0, metaRev:0, googleRev:0, ga4Rev:0};
-    byDate[d].meta    += (r.spend||0);
-    byDate[d].metaRev += (r.purchase_value||0);
+    const k = groupKey((r.date_start||'').replace(/-/g,''));
+    if (!byDate[k]) byDate[k] = {meta:0, google:0, metaRev:0, googleRev:0, ga4Rev:0};
+    byDate[k].meta    += (r.spend||0);
+    byDate[k].metaRev += (r.purchase_value||0);
   });
   gadsRows.forEach(r => {
-    if (!byDate[r.date]) byDate[r.date] = {meta:0, google:0, metaRev:0, googleRev:0, ga4Rev:0};
-    byDate[r.date].google    += r.cost;
-    byDate[r.date].googleRev += r.revenue;
+    const k = groupKey(r.date);
+    if (!byDate[k]) byDate[k] = {meta:0, google:0, metaRev:0, googleRev:0, ga4Rev:0};
+    byDate[k].google    += r.cost;
+    byDate[k].googleRev += r.revenue;
   });
-  // GA4 daily revenue by date
-  const ga4ByDate = {};
-  ga4Rows.forEach(r => { ga4ByDate[r.date] = (ga4ByDate[r.date]||0) + r.revenue; });
-  Object.keys(ga4ByDate).forEach(d => {
-    const k = d.replace(/-/g,'');
-    if (byDate[k]) byDate[k].ga4Rev = ga4ByDate[d];
+  ga4Rows.forEach(r => {
+    const k = groupKey(r.date.replace(/-/g,''));
+    if (!byDate[k]) byDate[k] = {meta:0, google:0, metaRev:0, googleRev:0, ga4Rev:0};
+    byDate[k].ga4Rev += r.revenue;
   });
 
   const dates     = Object.keys(byDate).sort();
-  const labels    = dates.map(d => d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8));
+  const labels    = dates.map(k => groupLabel(k));
   const metaArr   = dates.map(d => byDate[d].meta);
   const googleArr = dates.map(d => byDate[d].google);
   const roasArr   = dates.map(d => { const sp=byDate[d].meta+byDate[d].google, rv=byDate[d].metaRev+byDate[d].googleRev; return sp>0?Math.round(rv/sp*100)/100:0; });
@@ -1397,17 +1396,17 @@ async function renderOverall(s, e) {
     }}
   });
 
-  // GA4 revenue trend chart (Meta vs Google by date)
+  // GA4 revenue trend chart (Meta vs Google, grouped by grp setting)
   const ga4RevByDate = {};
   ga4Rows.forEach(r => {
-    const k = r.date.replace(/-/g,'');
+    const k = groupKey(r.date.replace(/-/g,''));
     if (!ga4RevByDate[k]) ga4RevByDate[k] = {Meta:0, Google:0};
     ga4RevByDate[k][r.channel] = (ga4RevByDate[k][r.channel]||0) + r.revenue;
   });
   const ga4RevDates = [...new Set([...dates, ...Object.keys(ga4RevByDate)])].sort();
   const ga4RevMetaArr   = ga4RevDates.map(d => (ga4RevByDate[d]||{}).Meta   || 0);
   const ga4RevGoogleArr = ga4RevDates.map(d => (ga4RevByDate[d]||{}).Google || 0);
-  const ga4RevLabels    = ga4RevDates.map(d => d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8));
+  const ga4RevLabels    = ga4RevDates.map(k => groupLabel(k));
 
   if (OVERALL_GA4REV_CHART) OVERALL_GA4REV_CHART.destroy();
   OVERALL_GA4REV_CHART = new Chart(document.getElementById('overallGa4RevChart'), {
