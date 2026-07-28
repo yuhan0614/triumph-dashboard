@@ -63,7 +63,7 @@
   .overall-kpi-spend { display: flex; flex-direction: column; justify-content: center; }
   .overall-kpi-spend .sc { height: 100%; display: flex; flex-direction: column; justify-content: center; }
   .overall-kpi-right { display: flex; flex-direction: column; gap: 8px; }
-  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
   .kpi-row-label { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; padding-left: 2px; }
   .sc-sm { background: white; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
   .sc-sm .lbl { font-size: 10px; color: #65676b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
@@ -227,6 +227,16 @@
         <div class="chart-wrap"><canvas id="overallDonut"></canvas></div>
       </div>
     </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>📊 GA4 營收趨勢（Meta vs Google）</h3>
+        <div class="chart-wrap"><canvas id="overallGa4RevChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>💹 GA4 營收佔比（媒體）</h3>
+        <div class="chart-wrap"><canvas id="overallGa4RevDonut"></canvas></div>
+      </div>
+    </div>
     <div class="table-card">
       <div class="table-header"><h3>📊 媒體比較</h3></div>
       <div class="table-wrap">
@@ -238,16 +248,20 @@
             <th class="num">曝光</th>
             <th class="num">點擊</th>
             <th class="num">CTR</th>
+            <th class="num">CPLC</th>
             <th class="num">廣告購買</th>
+            <th class="num">廣告CVR</th>
             <th class="num">廣告營收</th>
             <th class="num">廣告ROAS</th>
             <th class="num">廣告CPA</th>
             <th class="num" style="border-left:2px solid #f0f2f5">GA4購買</th>
+            <th class="num">GA4 CVR</th>
             <th class="num">GA4營收</th>
             <th class="num">GA4 ROAS</th>
             <th class="num">GA4 CPA</th>
+            <th class="num">GA4 VPT</th>
           </tr></thead>
-          <tbody id="overallMediaBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="overallMediaBody"><tr><td colspan="18" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1022,7 +1036,7 @@ function renderAge(ageRows) {
 }
 
 // ══════════ Google Ads ══════════
-let OVERALL_CHART = null, OVERALL_DONUT = null;
+let OVERALL_CHART = null, OVERALL_DONUT = null, OVERALL_GA4REV_CHART = null, OVERALL_GA4REV_DONUT = null;
 
 function toggleDetail(channel) {
   const rows = document.querySelectorAll(`.detail-${channel}`);
@@ -1059,8 +1073,9 @@ async function renderOverall(s, e) {
   const ga4Meta   = ga4ByChannel['Meta']   || {sessions:0, purchases:0, revenue:0};
   const ga4Google = ga4ByChannel['Google'] || {sessions:0, purchases:0, revenue:0};
   const ga4Tot = {
+    sessions:  ga4Meta.sessions  + ga4Google.sessions,
     purchases: ga4Meta.purchases + ga4Google.purchases,
-    revenue:     ga4Meta.revenue     + ga4Google.revenue,
+    revenue:   ga4Meta.revenue   + ga4Google.revenue,
   };
 
   // KPI totals
@@ -1090,17 +1105,23 @@ async function renderOverall(s, e) {
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
     sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
+  const totCplc = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
+  const ga4TotCvr = ga4Tot.sessions>0 ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
+  const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
   document.getElementById('overallAdCards').innerHTML = [
     scSm('c-teal',  '購買',  fmtN(totBuy),              fmtChg(totBuy,pBuy)),
     scSm('c-green', '營收',  fmtM(totRev),              fmtChg(totRev,pRev)),
     scSm('c-orange','ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
     scSm('',        'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
+    scSm('',        'CPLC',  totCplc>0?fmtM(totCplc):'—', ''),
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
-    scSm('c-teal',  '購買',  fmtN(ga4Tot.purchases),             fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
-    scSm('c-green', '營收',  fmtM(ga4Tot.revenue),               fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
-    scSm('c-red',   'ROAS',  ga4Roas.toFixed(2)+'x',             fmtChg(ga4Roas,pGa4Roas)),
+    scSm('c-teal',  '購買',  fmtN(ga4Tot.purchases),              fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
+    scSm('c-green', '營收',  fmtM(ga4Tot.revenue),                fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
+    scSm('c-red',   'ROAS',  ga4Roas.toFixed(2)+'x',              fmtChg(ga4Roas,pGa4Roas)),
     scSm('',        'CPA',   ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
+    scSm('c-red',   'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', ''),
+    scSm('',        'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—',  ''),
   ].join('');
 
   // daily trend
@@ -1165,8 +1186,76 @@ async function renderOverall(s, e) {
   if (OVERALL_DONUT) OVERALL_DONUT.destroy();
   OVERALL_DONUT = new Chart(document.getElementById('overallDonut'), {
     type:'doughnut',
+    plugins:[ChartDataLabels],
     data:{ labels:['Meta','Google'], datasets:[{data:[metaTot.spend, gadsTot.cost], backgroundColor:['#4285f4','#34a853'], borderWidth:1}] },
-    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{font:{size:11}, boxWidth:14}}}}
+    options:{responsive:true, maintainAspectRatio:false, plugins:{
+      legend:{position:'right', labels:{font:{size:11}, boxWidth:14}},
+      datalabels:{
+        color:'#fff', font:{size:11, weight:'bold'},
+        formatter:(val, ctx) => {
+          const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+          return total>0 ? (val/total*100).toFixed(1)+'%' : '';
+        },
+        anchor:'center', align:'center',
+      }
+    }}
+  });
+
+  // GA4 revenue trend chart (Meta vs Google by date)
+  const ga4RevByDate = {};
+  ga4Rows.forEach(r => {
+    const k = r.date.replace(/-/g,'');
+    if (!ga4RevByDate[k]) ga4RevByDate[k] = {Meta:0, Google:0};
+    ga4RevByDate[k][r.channel] = (ga4RevByDate[k][r.channel]||0) + r.revenue;
+  });
+  const ga4RevDates = [...new Set([...dates, ...Object.keys(ga4RevByDate)])].sort();
+  const ga4RevMetaArr   = ga4RevDates.map(d => (ga4RevByDate[d]||{}).Meta   || 0);
+  const ga4RevGoogleArr = ga4RevDates.map(d => (ga4RevByDate[d]||{}).Google || 0);
+  const ga4RevLabels    = ga4RevDates.map(d => d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8));
+
+  if (OVERALL_GA4REV_CHART) OVERALL_GA4REV_CHART.destroy();
+  OVERALL_GA4REV_CHART = new Chart(document.getElementById('overallGa4RevChart'), {
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{ labels:ga4RevLabels, datasets:[
+      {label:'Meta GA4營收',   data:ga4RevMetaArr,   backgroundColor:'rgba(66,133,244,0.6)', stack:'rev', yAxisID:'y'},
+      {label:'Google GA4營收', data:ga4RevGoogleArr, backgroundColor:'rgba(52,168,83,0.6)',  stack:'rev', yAxisID:'y'},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top', labels:{boxWidth:14, font:{size:11}}},
+        datalabels:{
+          display: ctx => ctx.raw > 0,
+          formatter:(val, ctx) => {
+            const ds = ctx.chart.data.datasets;
+            const total = ds.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
+            return total>0 ? (val/total*100).toFixed(0)+'%' : '';
+          },
+          color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
+        }
+      },
+      scales:{
+        x:{stacked:true, grid:{display:false}, ticks:{font:{size:10}, maxTicksLimit:12}},
+        y:{beginAtZero:true, stacked:true, grid:{color:'#f0f2f5'}, ticks:{callback:v=>'NT$'+fmtRaw(v), font:{size:10}}},
+      }}
+  });
+
+  if (OVERALL_GA4REV_DONUT) OVERALL_GA4REV_DONUT.destroy();
+  OVERALL_GA4REV_DONUT = new Chart(document.getElementById('overallGa4RevDonut'), {
+    type:'doughnut',
+    plugins:[ChartDataLabels],
+    data:{ labels:['Meta','Google'], datasets:[{data:[ga4Meta.revenue, ga4Google.revenue], backgroundColor:['#4285f4','#34a853'], borderWidth:1}] },
+    options:{responsive:true, maintainAspectRatio:false, plugins:{
+      legend:{position:'right', labels:{font:{size:11}, boxWidth:14}},
+      datalabels:{
+        color:'#fff', font:{size:11, weight:'bold'},
+        formatter:(val, ctx) => {
+          const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
+          return total>0 ? (val/total*100).toFixed(1)+'%' : '';
+        },
+        anchor:'center', align:'center',
+      }
+    }}
   });
 
   // media table
@@ -1198,8 +1287,8 @@ async function renderOverall(s, e) {
   });
   ga4Rows.forEach(r => {
     const k = groupKey(r.date.replace(/-/g,''));
-    if (!ga4ByKey[k]) ga4ByKey[k] = {Meta:{purchases:0,revenue:0}, Google:{purchases:0,revenue:0}};
-    if (ga4ByKey[k][r.channel]) { ga4ByKey[k][r.channel].purchases+=r.purchases; ga4ByKey[k][r.channel].revenue+=r.revenue; }
+    if (!ga4ByKey[k]) ga4ByKey[k] = {Meta:{sessions:0,purchases:0,revenue:0}, Google:{sessions:0,purchases:0,revenue:0}};
+    if (ga4ByKey[k][r.channel]) { ga4ByKey[k][r.channel].sessions+=r.sessions; ga4ByKey[k][r.channel].purchases+=r.purchases; ga4ByKey[k][r.channel].revenue+=r.revenue; }
   });
 
   const allKeys = [...new Set([...Object.keys(metaByKey), ...Object.keys(gads4ByKey)])].sort();
@@ -1217,13 +1306,17 @@ async function renderOverall(s, e) {
       const g4m = (ga4ByKey[k]||{})['Meta']    || {purchases:0,revenue:0};
       const g4g = (ga4ByKey[k]||{})['Google']  || {purchases:0,revenue:0};
       const g4 = channel==='合計'
-        ? {purchases: g4m.purchases+g4g.purchases, revenue: g4m.revenue+g4g.revenue}
-        : (ga4ByKey[k]||{})[channel] || {purchases:0,revenue:0};
-      const ctr  = v.imp>0 ? v.clicks/v.imp*100 : 0;
-      const roas = v.spend>0 ? v.rev/v.spend : 0;
-      const cpa  = v.buy>0 ? v.spend/v.buy : 0;
-      const g4roas = v.spend>0 ? g4.revenue/v.spend : 0;
+        ? {sessions: g4m.sessions+g4g.sessions, purchases: g4m.purchases+g4g.purchases, revenue: g4m.revenue+g4g.revenue}
+        : (ga4ByKey[k]||{})[channel] || {sessions:0,purchases:0,revenue:0};
+      const ctr    = v.imp>0    ? v.clicks/v.imp*100 : 0;
+      const cplc   = v.clicks>0 ? v.spend/v.clicks : 0;
+      const cvr    = v.clicks>0 ? v.buy/v.clicks*100 : 0;
+      const roas   = v.spend>0  ? v.rev/v.spend : 0;
+      const cpa    = v.buy>0    ? v.spend/v.buy : 0;
+      const g4roas = v.spend>0  ? g4.revenue/v.spend : 0;
       const g4cpa  = g4.purchases>0 ? v.spend/g4.purchases : 0;
+      const g4cvr  = g4.sessions>0  ? g4.purchases/g4.sessions*100 : 0;
+      const g4vpt  = g4.purchases>0 ? g4.revenue/g4.purchases : 0;
       const lbl = groupLabel(k);
       return `<tr class="detail-row detail-${channel}" style="display:none;background:#fafbfc">
         <td style="padding-left:28px;color:#888;font-size:12px">${lbl}</td>
@@ -1232,23 +1325,27 @@ async function renderOverall(s, e) {
         <td class="num" style="font-size:12px">${fmtN(v.imp)}</td>
         <td class="num" style="font-size:12px">${fmtN(v.clicks)}</td>
         <td class="num" style="font-size:12px">${ctr.toFixed(2)}%</td>
+        <td class="num" style="font-size:12px">${cplc>0?'NT$'+fmtRaw(cplc):'-'}</td>
         <td class="num" style="font-size:12px">${fmtN(v.buy)}</td>
+        <td class="num" style="font-size:12px">${cvr>0?cvr.toFixed(2)+'%':'-'}</td>
         <td class="num" style="font-size:12px">NT$${fmtRaw(v.rev)}</td>
         <td class="num" style="font-size:12px">${roas.toFixed(2)}x</td>
         <td class="num" style="font-size:12px">${v.buy>0?'NT$'+fmtRaw(cpa):'-'}</td>
         <td class="num" style="border-left:2px solid #f0f2f5;font-size:12px">${fmtN(g4.purchases)}</td>
+        <td class="num" style="font-size:12px">${g4cvr>0?g4cvr.toFixed(2)+'%':'-'}</td>
         <td class="num" style="font-size:12px">NT$${fmtRaw(g4.revenue)}</td>
         <td class="num" style="font-size:12px">${g4roas.toFixed(2)}x</td>
         <td class="num" style="font-size:12px">${g4.purchases>0?'NT$'+fmtRaw(g4cpa):'-'}</td>
+        <td class="num" style="font-size:12px">${g4vpt>0?fmtM(g4vpt):'-'}</td>
       </tr>`;
     }).join('');
   }
 
 
   const tableRows = [
-    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, buy:metaTot.purchase, rev:metaTot.purchase_value, roas:metaRoas, cpa:metaCpa, g4buy:ga4Meta.purchases, g4rev:ga4Meta.revenue, g4roas:ga4MetaRoas, g4cpa:ga4MetaCpa, expand:true},
-    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp,         clicks:gadsTot.clicks,      ctr:gCtr,    buy:gadsTot.purchase, rev:gadsTot.revenue,        roas:gRoas,    cpa:gCpa,    g4buy:ga4Google.purchases, g4rev:ga4Google.revenue, g4roas:ga4GoogleRoas, g4cpa:ga4GoogleCpa, expand:true},
-    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.purchases, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa, expand:true},
+    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, buy:metaTot.purchase, rev:metaTot.purchase_value, roas:metaRoas, cpa:metaCpa, g4buy:ga4Meta.purchases, g4rev:ga4Meta.revenue, g4roas:ga4MetaRoas, g4cpa:ga4MetaCpa, g4ses:ga4Meta.sessions, expand:true},
+    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp,         clicks:gadsTot.clicks,      ctr:gCtr,    buy:gadsTot.purchase, rev:gadsTot.revenue,        roas:gRoas,    cpa:gCpa,    g4buy:ga4Google.purchases, g4rev:ga4Google.revenue, g4roas:ga4GoogleRoas, g4cpa:ga4GoogleCpa, g4ses:ga4Google.sessions, expand:true},
+    {name:'合計',   color:'#555',    spend:totSpend,      imp:metaTot.impressions+gadsTot.imp, clicks:metaTot.link_clicks+gadsTot.clicks, ctr:totSpend>0?(metaTot.link_clicks+gadsTot.clicks)/(metaTot.impressions+gadsTot.imp)*100:0, buy:totBuy, rev:totRev, roas:totRoas, cpa:totCpa, g4buy:ga4Tot.purchases, g4rev:ga4Tot.revenue, g4roas:ga4TotRoas, g4cpa:ga4TotCpa, g4ses:ga4Tot.sessions, expand:true},
   ];
   const totalSpend2 = totSpend;
 
@@ -1257,6 +1354,10 @@ async function renderOverall(s, e) {
     const nameCell = r.expand
       ? `<span id="expand-${r.name}" onclick="toggleDetail('${r.name}')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="font-weight:600;color:${r.color}">${r.name}</span>`
       : `<span style="font-weight:600;color:${r.color}">${r.name}</span>`;
+    const rCplc   = r.clicks>0 ? r.spend/r.clicks : 0;
+    const rCvr    = r.clicks>0 ? r.buy/r.clicks*100 : 0;
+    const rG4Cvr  = r.g4ses>0  ? r.g4buy/r.g4ses*100 : 0;
+    const rG4Vpt  = r.g4buy>0  ? r.g4rev/r.g4buy : 0;
     html += `<tr style="font-weight:700">
       <td>${nameCell}</td>
       <td class="num">NT$${fmtRaw(r.spend)}</td>
@@ -1264,14 +1365,18 @@ async function renderOverall(s, e) {
       <td class="num">${fmtN(r.imp)}</td>
       <td class="num">${fmtN(r.clicks)}</td>
       <td class="num">${r.ctr.toFixed(2)}%</td>
+      <td class="num">${rCplc>0?'NT$'+fmtRaw(rCplc):'-'}</td>
       <td class="num">${fmtN(r.buy)}</td>
+      <td class="num">${rCvr>0?rCvr.toFixed(2)+'%':'-'}</td>
       <td class="num">NT$${fmtRaw(r.rev)}</td>
       <td class="num">${r.roas.toFixed(2)}x</td>
       <td class="num">${r.buy>0?'NT$'+fmtRaw(r.cpa):'-'}</td>
       <td class="num" style="border-left:2px solid #f0f2f5">${fmtN(r.g4buy)}</td>
+      <td class="num">${rG4Cvr>0?rG4Cvr.toFixed(2)+'%':'-'}</td>
       <td class="num">NT$${fmtRaw(r.g4rev)}</td>
       <td class="num">${r.g4roas.toFixed(2)}x</td>
       <td class="num">${r.g4buy>0?'NT$'+fmtRaw(r.g4cpa):'-'}</td>
+      <td class="num">${rG4Vpt>0?fmtM(rG4Vpt):'-'}</td>
     </tr>`;
     if (r.expand) html += detailRows(r.name, r.color);
   });
