@@ -72,6 +72,10 @@
   .sc-sm.kpi-empty { background: transparent; box-shadow: none; }
   .kpi-row.ga4-row .sc-sm { border-top: 2px solid #fff0f0; }
   .kpi-row.ga4-row .sc-sm.kpi-empty { border-top: none; }
+  .channel-kpi-block { background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .channel-kpi-header { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; }
+  .channel-kpi-spend { font-size: 12px; color: #888; margin-bottom: 8px; }
+  .channel-kpi-spend .spend-val { font-size: 15px; font-weight: 700; color: #222; margin: 0 6px; }
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 
   .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
@@ -211,6 +215,25 @@
           <div class="kpi-row ga4-row" id="overallGa4Cards"></div>
         </div>
       </div>
+    </div>
+    <!-- Meta / Google individual KPI cards -->
+    <div class="channel-kpi-block" id="metaKpiBlock">
+      <div class="channel-kpi-header" style="color:#4285f4">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px"><defs><linearGradient id="mgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0081FB"/><stop offset="100%" stop-color="#0064E0"/></linearGradient></defs><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4.5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 11c-2.51 0-4.72-1.28-6-3.22.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08c-1.28 1.94-3.49 3.22-6 3.22z" fill="url(#mgA)"/></svg>
+        Meta
+      </div>
+      <div class="channel-kpi-spend" id="metaChannelSpend"></div>
+      <div class="kpi-row" id="metaAdCards"></div>
+      <div class="kpi-row ga4-row" id="metaGa4Cards"></div>
+    </div>
+    <div class="channel-kpi-block" id="googleKpiBlock">
+      <div class="channel-kpi-header" style="color:#34a853">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px"><path d="M21.35 11.1H12v2.8h5.35C16.7 16.45 14.58 18 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.48 0 2.83.54 3.87 1.41L17.9 5.38C16.37 4.02 14.29 3.2 12 3.2 7.17 3.2 3.2 7.17 3.2 12S7.17 20.8 12 20.8c4.97 0 8.8-3.5 8.8-8.8 0-.59-.06-1.17-.15-1.7 0-.07-.15-.1-.3-.2z" fill="#4285F4"/><path d="M3.65 7.35l2.3 1.69C6.7 7.25 9.17 5.8 12 5.8c1.48 0 2.83.54 3.87 1.41L17.9 5.38C16.37 4.02 14.29 3.2 12 3.2c-3.7 0-6.87 2.1-8.35 5.15z" fill="#EA4335"/><path d="M12 20.8c2.74 0 5.04-.93 6.71-2.52l-2.42-1.87C15.28 17.43 13.74 18 12 18c-2.57 0-4.68-1.54-5.36-3.95L4.29 15.9C5.77 18.87 8.65 20.8 12 20.8z" fill="#34A853"/><path d="M21.35 11.1H12v2.8h5.35c-.37 1.22-1.14 2.25-2.14 2.95l2.42 1.87C19.38 17.16 20.8 14.76 20.8 12c0-.59-.06-1.17-.15-1.7-.09-.13-.2-.2-.3-.2z" fill="#FBBC05"/></svg>
+        Google
+      </div>
+      <div class="channel-kpi-spend" id="googleChannelSpend"></div>
+      <div class="kpi-row" id="googleAdCards"></div>
+      <div class="kpi-row ga4-row" id="googleGa4Cards"></div>
     </div>
     <div class="charts-row">
       <div class="chart-card">
@@ -1178,6 +1201,95 @@ async function renderOverall(s, e) {
     scSm('', 'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', fmtPp(ga4TotCvr,pGa4Cvr)),
     scSm('', 'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—', fmtChg(ga4TotVpt,pGa4Vpt)),
   ].join('');
+
+  // ── Meta / Google individual channel KPI cards ──
+  // prev period per channel
+  const pMetaSpend = mp.spend||0, pMetaBuy = mp.purchase||0, pMetaRev = mp.purchase_value||0;
+  const pMetaClicks = mp.link_clicks||0;
+  const pMetaRoas = pMetaSpend>0 ? pMetaRev/pMetaSpend : 0;
+  const pMetaCpa  = pMetaBuy>0  ? pMetaSpend/pMetaBuy : 0;
+  const pMetaCplc = pMetaClicks>0 ? pMetaSpend/pMetaClicks : 0;
+  const ga4PrevMeta = ga4PrevRows.filter(r=>r.channel==='Meta').reduce((a,r)=>{ a.sessions+=r.sessions; a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{sessions:0,purchases:0,revenue:0});
+  const pMetaG4Roas = pMetaSpend>0 ? ga4PrevMeta.revenue/pMetaSpend : 0;
+  const pMetaG4Cpa  = ga4PrevMeta.purchases>0 ? pMetaSpend/ga4PrevMeta.purchases : 0;
+  const pMetaG4Cvr  = ga4PrevMeta.sessions>0  ? ga4PrevMeta.purchases/ga4PrevMeta.sessions*100 : 0;
+  const pMetaG4Vpt  = ga4PrevMeta.purchases>0 ? ga4PrevMeta.revenue/ga4PrevMeta.purchases : 0;
+
+  const pGoogSpend = gadsPrev.cost, pGoogBuy = gadsPrev.purchase||0, pGoogRev = gadsPrev.revenue||0;
+  const pGoogClicks = gadsPrev.clicks||0;
+  const pGoogRoas = pGoogSpend>0 ? pGoogRev/pGoogSpend : 0;
+  const pGoogCpa  = pGoogBuy>0  ? pGoogSpend/pGoogBuy : 0;
+  const pGoogCplc = pGoogClicks>0 ? pGoogSpend/pGoogClicks : 0;
+  const ga4PrevGoogle = ga4PrevRows.filter(r=>r.channel==='Google').reduce((a,r)=>{ a.sessions+=r.sessions; a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{sessions:0,purchases:0,revenue:0});
+  const pGoogG4Roas = pGoogSpend>0 ? ga4PrevGoogle.revenue/pGoogSpend : 0;
+  const pGoogG4Cpa  = ga4PrevGoogle.purchases>0 ? pGoogSpend/ga4PrevGoogle.purchases : 0;
+  const pGoogG4Cvr  = ga4PrevGoogle.sessions>0  ? ga4PrevGoogle.purchases/ga4PrevGoogle.sessions*100 : 0;
+  const pGoogG4Vpt  = ga4PrevGoogle.purchases>0 ? ga4PrevGoogle.revenue/ga4PrevGoogle.purchases : 0;
+
+  // current period per channel derived values
+  const metaSpend = metaTot.spend, metaBuy = metaTot.purchase, metaRev = metaTot.purchase_value;
+  const metaClicks = metaTot.link_clicks;
+  const metaRoasV = metaSpend>0 ? metaRev/metaSpend : 0;
+  const metaCpaV  = metaBuy>0  ? metaSpend/metaBuy : 0;
+  const metaCplcV = metaClicks>0 ? metaSpend/metaClicks : 0;
+  const metaG4CvrV= ga4Meta.sessions>0  ? ga4Meta.purchases/ga4Meta.sessions*100 : 0;
+  const metaG4VptV= ga4Meta.purchases>0 ? ga4Meta.revenue/ga4Meta.purchases : 0;
+  const metaG4RoasV = metaSpend>0 ? ga4Meta.revenue/metaSpend : 0;
+  const metaG4CpaV  = ga4Meta.purchases>0 ? metaSpend/ga4Meta.purchases : 0;
+
+  const googSpend = gadsTot.cost, googBuy = gadsTot.purchase, googRev = gadsTot.revenue;
+  const googClicks = gadsTot.clicks;
+  const googRoasV = googSpend>0 ? googRev/googSpend : 0;
+  const googCpaV  = googBuy>0  ? googSpend/googBuy : 0;
+  const googCplcV = googClicks>0 ? googSpend/googClicks : 0;
+  const googG4CvrV= ga4Google.sessions>0  ? ga4Google.purchases/ga4Google.sessions*100 : 0;
+  const googG4VptV= ga4Google.purchases>0 ? ga4Google.revenue/ga4Google.purchases : 0;
+  const googG4RoasV = googSpend>0 ? ga4Google.revenue/googSpend : 0;
+  const googG4CpaV  = ga4Google.purchases>0 ? googSpend/ga4Google.purchases : 0;
+
+  function channelCards(spend, pSpendC, buy, pBuy, rev, pRev, roas, pRoas, cpa, pCpa, cplc, pCplc,
+                        g4buy, pg4buy, g4rev, pg4rev, g4roas, pg4roas, g4cpa, pg4cpa, g4cvr, pg4cvr, g4vpt, pg4vpt) {
+    return {
+      spend: `花費 <span class="spend-val">${fmtM(spend)}</span> ${fmtChg(spend,pSpendC)}`,
+      ad: [
+        scSm('','購買', fmtN(buy),             fmtChg(buy,pBuy)),
+        scSm('','營收', fmtM(rev),             fmtChg(rev,pRev)),
+        scSm('','ROAS', roas.toFixed(2)+'x',   fmtChg(roas,pRoas)),
+        scSm('','CPA',  buy>0?fmtM(cpa):'—',  fmtChg(cpa,pCpa)),
+        scSm('','CPLC', cplc>0?fmtM(cplc):'—',fmtChg(cplc,pCplc)),
+        kpiEmpty, kpiEmpty,
+      ].join(''),
+      ga4: [
+        scSm('','購買',    fmtN(g4buy),                fmtChg(g4buy,pg4buy)),
+        scSm('','營收',    fmtM(g4rev),                fmtChg(g4rev,pg4rev)),
+        scSm('','ROAS',    g4roas.toFixed(2)+'x',      fmtChg(g4roas,pg4roas)),
+        scSm('','CPA',     g4buy>0?fmtM(g4cpa):'—',   fmtChg(g4cpa,pg4cpa)),
+        kpiEmpty,
+        scSm('','GA4 CVR', g4cvr>0?g4cvr.toFixed(2)+'%':'—', fmtPp(g4cvr,pg4cvr)),
+        scSm('','GA4 VPT', g4vpt>0?fmtM(g4vpt):'—',  fmtChg(g4vpt,pg4vpt)),
+      ].join(''),
+    };
+  }
+
+  const mCards = channelCards(
+    metaSpend, pMetaSpend, metaBuy, pMetaBuy, metaRev, pMetaRev,
+    metaRoasV, pMetaRoas, metaCpaV, pMetaCpa, metaCplcV, pMetaCplc,
+    ga4Meta.purchases, ga4PrevMeta.purchases, ga4Meta.revenue, ga4PrevMeta.revenue,
+    metaG4RoasV, pMetaG4Roas, metaG4CpaV, pMetaG4Cpa, metaG4CvrV, pMetaG4Cvr, metaG4VptV, pMetaG4Vpt
+  );
+  document.getElementById('metaChannelSpend').innerHTML = mCards.spend;
+  document.getElementById('metaAdCards').innerHTML = mCards.ad;
+  document.getElementById('metaGa4Cards').innerHTML = mCards.ga4;
+
+  const gCards = channelCards(
+    googSpend, pGoogSpend, googBuy, pGoogBuy, googRev, pGoogRev,
+    googRoasV, pGoogRoas, googCpaV, pGoogCpa, googCplcV, pGoogCplc,
+    ga4Google.purchases, ga4PrevGoogle.purchases, ga4Google.revenue, ga4PrevGoogle.revenue,
+    googG4RoasV, pGoogG4Roas, googG4CpaV, pGoogG4Cpa, googG4CvrV, pGoogG4Cvr, googG4VptV, pGoogG4Vpt
+  );
+  document.getElementById('googleChannelSpend').innerHTML = gCards.spend;
+  document.getElementById('googleAdCards').innerHTML = gCards.ad;
+  document.getElementById('googleGa4Cards').innerHTML = gCards.ga4;
 
   // daily trend
   const byDate = {};
