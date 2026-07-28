@@ -1140,13 +1140,17 @@ async function renderOverall(s, e) {
     fetch(`/api/ga4/sources?since=${toApiDate(ps)}&until=${toApiDate(pe)}`).then(r=>r.json()).catch(()=>({data:[]})),
   ]);
   const mp = (metaPrevRes.data||[])[0]||{};
-  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>{ a.cost+=r.cost; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; },{cost:0,purchase:0,revenue:0});
+  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>{ a.cost+=r.cost; a.clicks+=r.clicks; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; },{cost:0,clicks:0,purchase:0,revenue:0});
   const pSpend = (mp.spend||0)+gadsPrev.cost, pBuy=(mp.purchase||0)+gadsPrev.purchase, pRev=(mp.purchase_value||0)+gadsPrev.revenue;
+  const pClicks = (mp.link_clicks||0)+gadsPrev.clicks;
   const pRoas  = pSpend>0?pRev/pSpend:0, pCpa=pBuy>0?pSpend/pBuy:0;
+  const pCplc  = pClicks>0 ? pSpend/pClicks : 0;
   const ga4PrevRows = ga4PrevRes.data || [];
-  const ga4PrevTot  = ga4PrevRows.reduce((a,r)=>{ a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{purchases:0,revenue:0});
+  const ga4PrevTot  = ga4PrevRows.reduce((a,r)=>{ a.sessions+=r.sessions; a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{sessions:0,purchases:0,revenue:0});
   const pGa4Roas = pSpend>0 ? ga4PrevTot.revenue/pSpend : 0;
   const pGa4Cpa  = ga4PrevTot.purchases>0 ? pSpend/ga4PrevTot.purchases : 0;
+  const pGa4Cvr  = ga4PrevTot.sessions>0  ? ga4PrevTot.purchases/ga4PrevTot.sessions*100 : 0;
+  const pGa4Vpt  = ga4PrevTot.purchases>0 ? ga4PrevTot.revenue/ga4PrevTot.purchases : 0;
 
   const sc    = (cls,lbl,val,sub) => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
@@ -1162,7 +1166,7 @@ async function renderOverall(s, e) {
     scSm('', '營收',  fmtM(totRev),              fmtChg(totRev,pRev)),
     scSm('', 'ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
     scSm('', 'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
-    scSm('', 'CPLC',  totCplc>0?fmtM(totCplc):'—', ''),
+    scSm('', 'CPLC',  totCplc>0?fmtM(totCplc):'—', fmtChg(totCplc,pCplc)),
     kpiEmpty, kpiEmpty,
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
@@ -1171,8 +1175,8 @@ async function renderOverall(s, e) {
     scSm('', 'ROAS',    ga4Roas.toFixed(2)+'x',              fmtChg(ga4Roas,pGa4Roas)),
     scSm('', 'CPA',     ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
     kpiEmpty,
-    scSm('', 'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', ''),
-    scSm('', 'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—', ''),
+    scSm('', 'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', fmtPp(ga4TotCvr,pGa4Cvr)),
+    scSm('', 'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—', fmtChg(ga4TotVpt,pGa4Vpt)),
   ].join('');
 
   // daily trend
