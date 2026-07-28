@@ -210,19 +210,7 @@
 
   <!-- ══════════ GA4 全站 ══════════ -->
   <div id="tab-ga4" style="display:none">
-    <div class="summary-grid" id="ga4AllKpis" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))"><div class="loading-cell" style="padding:20px">載入中…</div></div>
-    <div class="charts-row">
-      <div class="chart-card"><h3>📅 每日工作階段趨勢</h3><div class="chart-wrap"><canvas id="ga4AllTrendChart"></canvas></div></div>
-      <div class="chart-card"><h3>🌐 流量來源佔比</h3><div class="chart-wrap"><canvas id="ga4AllChannelChart"></canvas></div></div>
-    </div>
-    <div class="table-card">
-      <div class="table-header"><h3>🌐 流量來源明細</h3></div>
-      <div class="table-wrap"><div id="ga4AllChannelTable"><div class="loading-cell" style="padding:20px">載入中…</div></div></div>
-    </div>
-    <div class="table-card" style="margin-top:14px">
-      <div class="table-header"><h3>📅 每日明細</h3></div>
-      <div class="table-wrap"><div id="ga4AllDailyTable"><div class="loading-cell" style="padding:20px">載入中…</div></div></div>
-    </div>
+    <div style="text-align:center;padding:60px;color:#aaa">點擊「更新資料」開始載入</div>
   </div>
 
   <!-- ══════════ 媒體總成效 ══════════ -->
@@ -1599,99 +1587,364 @@ async function loadGadsData() {
   return GADS_DATA;
 }
 
-let GA4_ALL_TREND = null, GA4_ALL_CHANNEL = null;
+let _ga4TrendChart = null, _ga4PieSess = null, _ga4PieRev = null;
 async function renderGA4(s, e) {
   const se = toApiDate(s), ee = toApiDate(e);
-  document.getElementById('ga4AllKpis').innerHTML = '<div class="loading-cell" style="padding:20px">載入中…</div>';
+  const el = document.getElementById('tab-ga4');
+  el.innerHTML = '<div style="text-align:center;padding:60px;color:#aaa">載入中…</div>';
 
-  const [dailyRes, chanRes] = await Promise.all([
-    fetch(`/api/ga4?since=${se}&until=${ee}`).then(r=>r.json()),
-    fetch(`/api/ga4/channels?since=${se}&until=${ee}`).then(r=>r.json()),
+  const [ps, pe] = getPrevRange(s, e);
+  const pse = toApiDate(ps), pee = toApiDate(pe);
+
+  const [dailyRes, dailyChRes, dailySmRes, itemsRes, searchRes, prevDailyRes,
+         metaSpendRes, gadsAll] = await Promise.all([
+    fetch(`/api/ga4?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/ga4/daily-channels?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/ga4/daily-sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/ga4/items?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/ga4/search?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/ga4?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
+    loadGadsData(),
   ]);
 
   if (dailyRes.error) {
-    document.getElementById('ga4AllKpis').innerHTML = `<div class="loading-cell" style="padding:20px;color:#f5222d">❌ ${dailyRes.error}</div>`;
+    el.innerHTML = `<div style="padding:20px;color:#f5222d">❌ ${dailyRes.error}</div>`;
     return;
   }
 
-  const daily = (dailyRes.data || []).sort((a,b)=>a.date>b.date?1:-1);
-  const totSessions = daily.reduce((s,r)=>s+r.sessions,0);
-  const totUsers    = daily.reduce((s,r)=>s+r.users,0);
-  const totPV       = daily.reduce((s,r)=>s+r.pageviews,0);
-  const totConv     = daily.reduce((s,r)=>s+(r.conversions||0),0);
-  const totRev      = daily.reduce((s,r)=>s+r.revenue,0);
-  const totNew      = daily.reduce((s,r)=>s+r.new_users,0);
-  const avgBounce   = daily.length ? daily.reduce((s,r)=>s+r.bounce_rate,0)/daily.length : 0;
-  const avgDur      = daily.length ? daily.reduce((s,r)=>s+r.avg_session,0)/daily.length : 0;
-  const fmtSec = t => { const m=Math.floor(t/60),sec=Math.round(t%60); return `${m}:${sec.toString().padStart(2,'0')}`; };
+  const fmtSec = v => { const n=parseFloat(v||0),m=Math.floor(n/60); return `${m}:${String(Math.round(n%60)).padStart(2,'0')}`; };
+  const fmtBR  = v => (parseFloat(v||0)*100).toFixed(1)+'%';
+  const fmtNN  = n => Number(n||0).toLocaleString('zh-TW');
+  const fmtRR  = n => 'NT$'+Math.round(n||0).toLocaleString('zh-TW');
+  const badge  = (cur, prev, inv=false) => {
+    if (!prev) return '<span style="font-size:11px;color:#ccc">—</span>';
+    const pct = (cur-prev)/Math.abs(prev)*100;
+    const good = inv ? pct<=0 : pct>=0;
+    return `<span style="font-size:11px;color:${good?'#52c41a':'#f5222d'};font-weight:500">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
+  };
 
-  const kpi = (lbl,val,cls='') => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
-  document.getElementById('ga4AllKpis').innerHTML = [
-    kpi('工作階段',    fmtN(totSessions),   'c-blue'),
-    kpi('活躍使用者',  fmtN(totUsers),      'c-purple'),
-    kpi('新使用者',    fmtN(totNew)),
-    kpi('網頁瀏覽',    fmtN(totPV)),
-    kpi('購買數',      fmtN(totConv),       'c-teal'),
-    kpi('營收',        totRev>0?fmtM(totRev):'—', 'c-green'),
-    kpi('跳出率',      (avgBounce*100).toFixed(1)+'%'),
-    kpi('平均停留',    fmtSec(avgDur)),
-  ].join('');
+  const sinceD = s, untilD = e;
+  const prevSinceD = ps, prevUntilD = pe;
 
-  // 趨勢圖
-  const labels = daily.map(r=>r.date.slice(5));
-  if (GA4_ALL_TREND) GA4_ALL_TREND.destroy();
-  GA4_ALL_TREND = new Chart(document.getElementById('ga4AllTrendChart'), {
-    type:'bar',
-    data:{ labels, datasets:[
-      {type:'bar',  label:'工作階段', data:daily.map(r=>r.sessions), backgroundColor:'rgba(114,46,209,.45)', borderColor:'#722ed1', borderWidth:1, borderRadius:3, yAxisID:'y', order:2},
-      {type:'line', label:'使用者',   data:daily.map(r=>r.users),   borderColor:'#1677ff', backgroundColor:'transparent', borderWidth:2, pointRadius:2, tension:.3, yAxisID:'y', order:1},
+  // --- daily ---
+  const dailyAsc = (dailyRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).sort((a,b)=>a.date>b.date?1:-1);
+  const daily = [...dailyAsc].reverse();
+
+  // --- channels aggregate ---
+  const chMap = {};
+  (dailyChRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
+    const k = r.sessionDefaultChannelGrouping||'(other)';
+    if (!chMap[k]) chMap[k] = {k,sessions:0,addToCarts:0,conversions:0,totalRevenue:0,_dur:0,_bRate:0,_n:0};
+    const m = chMap[k];
+    m.sessions+=parseFloat(r.sessions||0); m.addToCarts+=parseFloat(r.addToCarts||0);
+    m.conversions+=parseFloat(r.conversions||0); m.totalRevenue+=parseFloat(r.totalRevenue||0);
+    m._dur+=parseFloat(r.averageSessionDuration||0); m._bRate+=parseFloat(r.bounceRate||0); m._n++;
+  });
+  Object.values(chMap).forEach(m=>{m.averageSessionDuration=m._n?m._dur/m._n:0;m.bounceRate=m._n?m._bRate/m._n:0;});
+  const channels = Object.values(chMap).sort((a,b)=>b.sessions-a.sessions);
+
+  // --- source/medium aggregate ---
+  const smMap = {};
+  (dailySmRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
+    const k = r.sessionSourceMedium||'(other)';
+    if (!smMap[k]) smMap[k] = {k,sessions:0,addToCarts:0,conversions:0,totalRevenue:0,_dur:0,_bRate:0,_n:0};
+    const m = smMap[k];
+    m.sessions+=parseFloat(r.sessions||0); m.addToCarts+=parseFloat(r.addToCarts||0);
+    m.conversions+=parseFloat(r.conversions||0); m.totalRevenue+=parseFloat(r.totalRevenue||0);
+    m._dur+=parseFloat(r.averageSessionDuration||0); m._bRate+=parseFloat(r.bounceRate||0); m._n++;
+  });
+  Object.values(smMap).forEach(m=>{m.averageSessionDuration=m._n?m._dur/m._n:0;m.bounceRate=m._n?m._bRate/m._n:0;});
+  const srcmed = Object.values(smMap).sort((a,b)=>b.sessions-a.sessions);
+
+  // --- prev period channel/source maps ---
+  const prevChMap = {};
+  (dailyChRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD).forEach(r => {
+    const k = r.sessionDefaultChannelGrouping||'(other)';
+    if (!prevChMap[k]) prevChMap[k]={sessions:0,conversions:0,totalRevenue:0};
+    prevChMap[k].sessions+=parseFloat(r.sessions||0); prevChMap[k].conversions+=parseFloat(r.conversions||0); prevChMap[k].totalRevenue+=parseFloat(r.totalRevenue||0);
+  });
+  const prevSmMap = {};
+  (dailySmRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD).forEach(r => {
+    const k = r.sessionSourceMedium||'(other)';
+    if (!prevSmMap[k]) prevSmMap[k]={sessions:0,conversions:0,totalRevenue:0};
+    prevSmMap[k].sessions+=parseFloat(r.sessions||0); prevSmMap[k].conversions+=parseFloat(r.conversions||0); prevSmMap[k].totalRevenue+=parseFloat(r.totalRevenue||0);
+  });
+
+  // --- items ---
+  const itemMap = {};
+  (itemsRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
+    const k = r.itemName||'(other)';
+    if (!itemMap[k]) itemMap[k]={itemName:k,itemsViewed:0,addToCarts:0,itemsPurchased:0,itemRevenue:0};
+    const m=itemMap[k];
+    m.itemsViewed+=parseFloat(r.itemsViewed||0); m.addToCarts+=parseFloat(r.addToCarts||0);
+    m.itemsPurchased+=parseFloat(r.itemsPurchased||0); m.itemRevenue+=parseFloat(r.itemRevenue||0);
+  });
+  const items = Object.values(itemMap).sort((a,b)=>b.itemRevenue-a.itemRevenue);
+
+  // --- search ---
+  const searchMap = {};
+  (searchRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
+    const k=r.searchTerm||''; if(!k) return;
+    if (!searchMap[k]) searchMap[k]={term:k,count:0,sessions:0};
+    searchMap[k].count+=parseFloat(r.eventCount||0); searchMap[k].sessions+=parseFloat(r.sessions||0);
+  });
+  const searches = Object.values(searchMap).sort((a,b)=>b.count-a.count);
+
+  // --- ad revenue by date (Triumph sources) ---
+  const TRIUMPH_AD_SM = ['facebookwm / soc', 'google / cpc'];
+  const adRevByDate = {};
+  (dailySmRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD&&TRIUMPH_AD_SM.includes((r.sessionSourceMedium||'').toLowerCase()))
+    .forEach(r=>{adRevByDate[r.date]=(adRevByDate[r.date]||0)+parseFloat(r.totalRevenue||0);});
+  const totalAdRev = Object.values(adRevByDate).reduce((s,v)=>s+v,0);
+
+  // prev period ad rev
+  const prevAdRevByDate = {};
+  (dailySmRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD&&TRIUMPH_AD_SM.includes((r.sessionSourceMedium||'').toLowerCase()))
+    .forEach(r=>{prevAdRevByDate[r.date]=(prevAdRevByDate[r.date]||0)+parseFloat(r.totalRevenue||0);});
+  const prevTotalAdRev = Object.values(prevAdRevByDate).reduce((s,v)=>s+v,0);
+
+  // --- ad spend per day (Meta + Google) ---
+  const metaTrend = metaSpendRes.data||[];
+  const metaSpendMap = {};
+  metaTrend.forEach(r=>{if(r.date_start) metaSpendMap[r.date_start]=(metaSpendMap[r.date_start]||0)+(r.spend||0);});
+  const gadsRows = gadsAll.filter(r=>r.date>=toApiDate(s)&&r.date<=toApiDate(e));
+  const gSpendMap = {};
+  gadsRows.forEach(r=>{gSpendMap[r.date]=(gSpendMap[r.date]||0)+r.cost;});
+
+  const chartRows = dailyAsc.map(r => {
+    const d = r.date.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
+    const adSpend=(metaSpendMap[d]||0)+(gSpendMap[d]||0);
+    return {d, sessions:parseFloat(r.sessions||0), revenue:parseFloat(r.totalRevenue||0), siteRoas:adSpend>0?parseFloat(r.totalRevenue||0)/adSpend:0, adSpend};
+  });
+  const totalAdSpend = chartRows.reduce((s,r)=>s+r.adSpend,0);
+
+  // --- totals ---
+  const totalSess   = dailyAsc.reduce((s,r)=>s+parseFloat(r.sessions||0),0);
+  const totalItemsViewed = (itemsRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).reduce((s,r)=>s+parseFloat(r.itemsViewed||0),0);
+  const totalATC    = dailyAsc.reduce((s,r)=>s+parseFloat(r.addToCarts||0),0);
+  const totalConv   = dailyAsc.reduce((s,r)=>s+parseFloat(r.conversions||0),0);
+  const totalRev    = dailyAsc.reduce((s,r)=>s+parseFloat(r.totalRevenue||0),0);
+  const siteRoas    = totalAdSpend>0 ? totalRev/totalAdSpend : 0;
+  const adRevPct    = totalRev>0 ? totalAdRev/totalRev*100 : 0;
+
+  // --- prev totals ---
+  const prevDailyAsc = (prevDailyRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD);
+  const prevSess  = prevDailyAsc.reduce((s,r)=>s+parseFloat(r.sessions||0),0);
+  const prevATC   = prevDailyAsc.reduce((s,r)=>s+parseFloat(r.addToCarts||0),0);
+  const prevConv  = prevDailyAsc.reduce((s,r)=>s+parseFloat(r.conversions||0),0);
+  const prevRev   = prevDailyAsc.reduce((s,r)=>s+parseFloat(r.totalRevenue||0),0);
+  const prevMetaSp= (metaSpendRes.data||[]).length>0 ? 0 : 0; // already included in prev period calc below
+  const prevGSpend= gadsAll.filter(r=>r.date>=pse&&r.date<=pee).reduce((s,r)=>s+r.cost,0);
+  const prevMetaSpend = (await fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${pse}&until=${pee}&level=account&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})));
+  const prevMetaTotal = ((prevMetaSpend.data||[])[0]||{}).spend||0;
+  const prevAdSpend   = prevMetaTotal + prevGSpend;
+  const prevSiteRoas  = prevAdSpend>0 ? prevRev/prevAdSpend : 0;
+  const prevAdRevPct  = prevRev>0 ? prevTotalAdRev/prevRev*100 : 0;
+
+  const totalChRev = channels.reduce((s,r)=>s+parseFloat(r.totalRevenue||0),0);
+  const totalSmRev = srcmed.reduce((s,r)=>s+parseFloat(r.totalRevenue||0),0);
+  const totalChSess= channels.reduce((s,r)=>s+parseFloat(r.sessions||0),0);
+  const prevTotalChRev = Object.values(prevChMap).reduce((s,v)=>s+v.totalRevenue,0);
+  const prevTotalSmRev = Object.values(prevSmMap).reduce((s,v)=>s+v.totalRevenue,0);
+
+  // --- table helpers ---
+  const R = 'style="text-align:right"';
+  const rowH = 38;
+  const scrollTbl = (rows, rowFn, hd) => `<div style="overflow-x:auto"><div style="max-height:${10*rowH+40}px;overflow-y:auto">
+    <table><thead style="position:sticky;top:0;z-index:2">${hd}</thead><tbody>${rows.map(rowFn).join('')}</tbody></table>
+  </div></div>`;
+
+  const thead = `<tr><th>日期</th><th ${R}>工作階段</th><th ${R}>加入購物車</th><th ${R}>購買</th><th ${R}>全站營收</th><th ${R}>廣告營收</th><th ${R}>廣告營收佔比</th><th ${R}>平均停留</th><th ${R}>跳出率</th></tr>`;
+  const chead = `<tr><th style="min-width:160px">管道</th><th ${R}>工作階段</th><th ${R}>購買</th><th ${R}>全站營收</th><th ${R}>營收佔比</th><th ${R}>平均停留</th><th ${R}>跳出率</th></tr>`;
+  const shead = `<tr><th style="min-width:220px">來源／媒介</th><th ${R}>工作階段</th><th ${R}>購買</th><th ${R}>全站營收</th><th ${R}>營收佔比</th><th ${R}>平均停留</th><th ${R}>跳出率</th></tr>`;
+
+  const dRow = r => {
+    const dayAdRev = adRevByDate[r.date]||0;
+    const dayRevPct = parseFloat(r.totalRevenue||0)>0 ? dayAdRev/parseFloat(r.totalRevenue)*100 : 0;
+    return `<tr>
+      <td>${r.date.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')}</td>
+      <td ${R}>${fmtNN(r.sessions)}</td><td ${R}>${fmtNN(r.addToCarts)}</td><td ${R}>${fmtNN(r.conversions)}</td>
+      <td ${R}>${fmtRR(r.totalRevenue)}</td><td ${R}>${fmtRR(dayAdRev)}</td>
+      <td ${R}>${dayRevPct.toFixed(1)}%</td>
+      <td ${R}>${fmtSec(r.averageSessionDuration)}</td><td ${R}>${fmtBR(r.bounceRate)}</td>
+    </tr>`;
+  };
+  const cRow = r => {
+    const p = prevChMap[r.k||r.sessionDefaultChannelGrouping||'(other)']||{};
+    const revPct = totalChRev>0?parseFloat(r.totalRevenue||0)/totalChRev*100:0;
+    const prevRevPct = prevTotalChRev>0?(p.totalRevenue||0)/prevTotalChRev*100:0;
+    return `<tr>
+      <td>${r.k||'—'}</td>
+      <td ${R}>${fmtNN(r.sessions)}<br>${badge(r.sessions,p.sessions)}</td>
+      <td ${R}>${fmtNN(r.conversions)}<br>${badge(r.conversions,p.conversions)}</td>
+      <td ${R}>${fmtRR(r.totalRevenue)}<br>${badge(r.totalRevenue,p.totalRevenue)}</td>
+      <td ${R}>${revPct.toFixed(1)}%<br>${badge(revPct,prevRevPct)}</td>
+      <td ${R}>${fmtSec(r.averageSessionDuration)}</td><td ${R}>${fmtBR(r.bounceRate)}</td>
+    </tr>`;
+  };
+  const sRow = r => {
+    const p = prevSmMap[r.k||r.sessionSourceMedium||'(other)']||{};
+    const revPct = totalSmRev>0?parseFloat(r.totalRevenue||0)/totalSmRev*100:0;
+    const prevRevPct = prevTotalSmRev>0?(p.totalRevenue||0)/prevTotalSmRev*100:0;
+    return `<tr>
+      <td>${r.k||'—'}</td>
+      <td ${R}>${fmtNN(r.sessions)}<br>${badge(r.sessions,p.sessions)}</td>
+      <td ${R}>${fmtNN(r.conversions)}<br>${badge(r.conversions,p.conversions)}</td>
+      <td ${R}>${fmtRR(r.totalRevenue)}<br>${badge(r.totalRevenue,p.totalRevenue)}</td>
+      <td ${R}>${revPct.toFixed(1)}%<br>${badge(revPct,prevRevPct)}</td>
+      <td ${R}>${fmtSec(r.averageSessionDuration)}</td><td ${R}>${fmtBR(r.bounceRate)}</td>
+    </tr>`;
+  };
+
+  // --- pie data builder ---
+  const pieColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#14b8a6','#f97316'];
+  const buildPieData = (rows, labelKey, revTotal) => {
+    const threshold = revTotal*0.05;
+    const shown = rows.filter(r=>parseFloat(r.totalRevenue||0)>=threshold);
+    const otherRev = rows.filter(r=>parseFloat(r.totalRevenue||0)<threshold).reduce((s,r)=>s+parseFloat(r.totalRevenue||0),0);
+    const labels = [...shown.map(r=>r[labelKey]||r.k||'—'), ...(otherRev>0?['其他']:[])];
+    const revData = [...shown.map(r=>parseFloat(r.totalRevenue||0)), ...(otherRev>0?[otherRev]:[])];
+    const colors  = labels.map((_,i)=>i<shown.length?pieColors[i%pieColors.length]:'#d1d5db');
+    return {labels, revData, colors};
+  };
+  const pieData   = buildPieData(channels, 'k', totalChRev);
+  const pieSmData = buildPieData(srcmed,   'k', totalSmRev);
+
+  // --- funnel ---
+  const funnelSteps = [
+    {label:'工作階段', val:totalSess,       color:'#6366f1'},
+    {label:'商品瀏覽', val:totalItemsViewed, color:'#3b82f6'},
+    {label:'加入購物車',val:totalATC,        color:'#f59e0b'},
+    {label:'購買',     val:totalConv,        color:'#10b981'},
+  ].filter(s=>s.val>0);
+  const funnelHTML = funnelSteps.length ? (() => {
+    const steps = funnelSteps.map((s,i)=>{
+      const prev = i>0?funnelSteps[i-1].val:null;
+      const pct  = prev?(s.val/prev*100).toFixed(1)+'%':'';
+      return `<div style="flex:1;text-align:center">
+        <div style="font-size:13px;color:#888;margin-bottom:4px">${s.label}</div>
+        <div style="font-size:22px;font-weight:700;color:${s.color}">${fmtNN(s.val)}</div>
+        ${pct?`<div style="font-size:11px;color:#aaa;margin-top:2px">↑ 上一步 ${pct}</div>`:''}
+      </div>`;
+    });
+    const arrows = funnelSteps.slice(1).map(()=>`<div style="color:#d1d5db;font-size:18px;padding-top:12px">▶</div>`);
+    const merged=[]; steps.forEach((s,i)=>{merged.push(s);if(arrows[i])merged.push(arrows[i]);});
+    return `<div class="chart-card" style="margin-top:14px">
+      <h3>🔀 購物漏斗</h3>
+      <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;padding:8px 0">${merged.join('')}</div>
+      <div style="margin-top:12px;font-size:12px;color:#aaa">
+        購物車放棄率：<strong style="color:${(1-totalConv/Math.max(totalATC,1))*100>50?'#f5222d':'#888'}">${totalATC>0?((1-totalConv/totalATC)*100).toFixed(1):'—'}%</strong> 的人加入購物車後沒有完成購買
+      </div>
+    </div>`;
+  })() : '';
+
+  // --- items table ---
+  const itemsHTML = items.length ? (() => {
+    const ihead = `<tr><th style="min-width:200px">商品名稱</th><th ${R}>瀏覽</th><th ${R}>加入購物車</th><th ${R}>購買</th><th ${R}>營收</th><th ${R}>加購率</th><th ${R}>轉換率</th></tr>`;
+    const iRow = r => {
+      const atcRate=r.itemsViewed>0?(r.addToCarts/r.itemsViewed*100).toFixed(1)+'%':'—';
+      const cvRate =r.itemsViewed>0?(r.itemsPurchased/r.itemsViewed*100).toFixed(1)+'%':'—';
+      return `<tr>
+        <td>${r.itemName}</td>
+        <td ${R}>${fmtNN(r.itemsViewed)}</td><td ${R}>${fmtNN(r.addToCarts)}</td>
+        <td ${R}>${fmtNN(r.itemsPurchased)}</td><td ${R}>${fmtRR(r.itemRevenue)}</td>
+        <td ${R}>${atcRate}</td><td ${R}>${cvRate}</td>
+      </tr>`;
+    };
+    return `<div class="table-card" style="margin-top:14px">
+      <div class="table-header"><h3>🛍️ 商品表現</h3></div>
+      ${scrollTbl(items, iRow, ihead)}
+    </div>`;
+  })() : '';
+
+  // --- search table ---
+  const searchHTML = searches.length ? (() => {
+    const shed = `<tr><th>搜尋關鍵字</th><th ${R}>搜尋次數</th><th ${R}>包含的工作階段</th></tr>`;
+    const shRow = r => `<tr><td>${r.term}</td><td ${R}>${fmtNN(r.count)}</td><td ${R}>${fmtNN(r.sessions)}</td></tr>`;
+    return `<div class="table-card" style="margin-top:14px">
+      <div class="table-header"><h3>🔍 站內搜尋關鍵字</h3></div>
+      ${scrollTbl(searches, shRow, shed)}
+    </div>`;
+  })() : '';
+
+  // --- render HTML ---
+  el.innerHTML = `
+    <div class="summary-grid">
+      <div class="sc c-purple"><div class="lbl">工作階段</div><div class="val">${fmtNN(totalSess)}</div><div class="sub">${badge(totalSess,prevSess)}</div></div>
+      <div class="sc c-orange"><div class="lbl">加入購物車</div><div class="val">${fmtNN(totalATC)}</div><div class="sub">${badge(totalATC,prevATC)}</div></div>
+      <div class="sc c-teal"><div class="lbl">購買</div><div class="val">${fmtNN(totalConv)}</div><div class="sub">${badge(totalConv,prevConv)}</div></div>
+      <div class="sc c-pink"><div class="lbl">營收</div><div class="val">${fmtRR(totalRev)}</div><div class="sub">${badge(totalRev,prevRev)}</div></div>
+      <div class="sc c-blue"><div class="lbl">廣告花費</div><div class="val">${fmtRR(totalAdSpend)}</div><div class="sub">${badge(totalAdSpend,prevAdSpend)}</div></div>
+      <div class="sc c-green"><div class="lbl">全站 ROAS</div><div class="val">${siteRoas.toFixed(2)}x</div><div class="sub">${badge(siteRoas,prevSiteRoas)}</div></div>
+      <div class="sc c-orange"><div class="lbl">廣告營收佔比</div><div class="val">${adRevPct.toFixed(1)}%</div><div class="sub">${badge(adRevPct,prevAdRevPct)}</div></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:20px">
+      <h3>📅 每日趨勢</h3>
+      <div style="position:relative;height:260px"><canvas id="_ga4TrendCanvas"></canvas></div>
+    </div>
+    <div class="table-card" style="margin-bottom:14px">
+      <div class="table-header"><h3>📅 每日明細</h3></div>
+      ${scrollTbl(daily, dRow, thead)}
+    </div>
+    <div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
+        <div class="chart-card"><div style="position:relative;height:240px"><canvas id="_ga4PieSessCanvas"></canvas></div></div>
+        <div class="table-card"><div class="table-header"><h3>📡 分管道</h3></div>${scrollTbl(channels,cRow,chead)}</div>
+      </div>
+      <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
+        <div class="chart-card"><div style="position:relative;height:240px"><canvas id="_ga4PieRevCanvas"></canvas></div></div>
+        <div class="table-card"><div class="table-header"><h3>🔗 分來源媒介</h3></div>${scrollTbl(srcmed,sRow,shead)}</div>
+      </div>
+    </div>
+    ${funnelHTML}
+    ${itemsHTML}
+    ${searchHTML}
+  `;
+
+  // --- charts ---
+  if (_ga4TrendChart) _ga4TrendChart.destroy();
+  _ga4TrendChart = new Chart(document.getElementById('_ga4TrendCanvas'), {
+    data:{ labels:chartRows.map(r=>r.d), datasets:[
+      {type:'bar',  label:'工作階段', data:chartRows.map(r=>r.sessions), backgroundColor:'rgba(99,102,241,0.3)', borderColor:'#6366f1', borderWidth:1, borderRadius:3, yAxisID:'y',  order:3},
+      {type:'line', label:'營收',     data:chartRows.map(r=>r.revenue),  borderColor:'#10b981', borderWidth:2, pointRadius:2, tension:0.3, yAxisID:'y2', order:2},
+      {type:'line', label:'全站ROAS', data:chartRows.map(r=>r.siteRoas), borderColor:'#e8833a', borderWidth:2, pointRadius:2, tension:0.3, yAxisID:'y3', order:1},
     ]},
-    options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'top', labels:{boxWidth:12, font:{size:11}}}},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:12}}, datalabels:{display:false}},
       scales:{
-        x:{grid:{display:false}, ticks:{font:{size:10}, maxTicksLimit:12}},
-        y:{beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10}}},
-      }}
+        x:  {grid:{display:false}, ticks:{font:{size:10},maxTicksLimit:14}},
+        y:  {position:'left',  beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}},
+        y2: {position:'right', beginAtZero:true, grid:{display:false},   ticks:{callback:v=>'NT$'+Math.round(v/1000)+'K',font:{size:10}}},
+        y3: {display:false, beginAtZero:true},
+      }
+    }
   });
 
-  // 來源圓餅
-  const channels = chanRes.data || [];
-  const COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#fadb14','#a0d911','#ff4d4f','#36cfc9'];
-  if (GA4_ALL_CHANNEL) GA4_ALL_CHANNEL.destroy();
-  GA4_ALL_CHANNEL = new Chart(document.getElementById('ga4AllChannelChart'), {
+  const pieOpts = title => ({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},
+      title:{display:true,text:title,font:{size:12},padding:{bottom:6}},
+      datalabels:{display:false},
+      tooltip:{callbacks:{label:ctx=>{
+        const total=ctx.dataset.data.reduce((s,v)=>s+v,0);
+        return ` ${ctx.label}: ${total>0?(ctx.parsed/total*100).toFixed(1):'0'}%`;
+      }}}
+    }
+  });
+  if (_ga4PieSess) _ga4PieSess.destroy();
+  _ga4PieSess = new Chart(document.getElementById('_ga4PieSessCanvas'), {
     type:'doughnut',
-    data:{ labels:channels.map(c=>c.channel), datasets:[{data:channels.map(c=>c.sessions), backgroundColor:COLORS, borderWidth:2, borderColor:'#fff'}] },
-    options:{responsive:true, maintainAspectRatio:false, cutout:'55%',
-      plugins:{legend:{position:'bottom', labels:{font:{size:11}, boxWidth:12}}}}
+    data:{labels:pieData.labels, datasets:[{data:pieData.revData, backgroundColor:pieData.colors, borderWidth:1}]},
+    options: pieOpts('管道營收佔比')
   });
-
-  // 來源明細表
-  document.getElementById('ga4AllChannelTable').innerHTML = `<table>
-    <thead><tr><th>來源管道</th><th class="num">工作階段</th><th class="num">使用者</th><th class="num">購買</th><th class="num">營收</th></tr></thead>
-    <tbody>${channels.map(c=>`<tr>
-      <td>${c.channel}</td>
-      <td class="num">${fmtN(c.sessions)}</td>
-      <td class="num">${fmtN(c.users)}</td>
-      <td class="num">${fmtN(c.purchases)}</td>
-      <td class="num">${c.revenue>0?fmtM(c.revenue):'—'}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
-
-  // 每日明細表
-  document.getElementById('ga4AllDailyTable').innerHTML = `<table>
-    <thead><tr><th>日期</th><th class="num">工作階段</th><th class="num">使用者</th><th class="num">新使用者</th><th class="num">網頁瀏覽</th><th class="num">跳出率</th><th class="num">平均停留</th><th class="num">購買</th><th class="num">營收</th></tr></thead>
-    <tbody>${[...daily].reverse().map(r=>`<tr>
-      <td>${r.date}</td>
-      <td class="num">${fmtN(r.sessions)}</td>
-      <td class="num">${fmtN(r.users)}</td>
-      <td class="num">${fmtN(r.new_users)}</td>
-      <td class="num">${fmtN(r.pageviews)}</td>
-      <td class="num">${(r.bounce_rate*100).toFixed(1)}%</td>
-      <td class="num">${fmtSec(r.avg_session)}</td>
-      <td class="num">${fmtN(r.conversions||0)}</td>
-      <td class="num">${r.revenue>0?fmtM(r.revenue):'—'}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+  if (_ga4PieRev) _ga4PieRev.destroy();
+  _ga4PieRev = new Chart(document.getElementById('_ga4PieRevCanvas'), {
+    type:'doughnut',
+    data:{labels:pieSmData.labels, datasets:[{data:pieSmData.revData, backgroundColor:pieSmData.colors, borderWidth:1}]},
+    options: pieOpts('來源媒介營收佔比')
+  });
 }
 
 async function renderGads(s, e) {

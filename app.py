@@ -52,7 +52,8 @@ def api_ga4():
                 Metric(name="sessions"),
                 Metric(name="activeUsers"),
                 Metric(name="screenPageViews"),
-                Metric(name="conversions"),
+                Metric(name="addToCarts"),
+                Metric(name="ecommercePurchases"),
                 Metric(name="totalRevenue"),
                 Metric(name="bounceRate"),
                 Metric(name="averageSessionDuration"),
@@ -65,17 +66,181 @@ def api_ga4():
             d = row.dimension_values[0].value
             m = row.metric_values
             rows.append({
-                "date":        f"{d[:4]}-{d[4:6]}-{d[6:]}",
-                "sessions":    int(m[0].value),
-                "users":       int(m[1].value),
-                "pageviews":   int(m[2].value),
-                "conversions": float(m[3].value),
-                "revenue":     float(m[4].value),
-                "bounce_rate": float(m[5].value),
-                "avg_session": float(m[6].value),
-                "new_users":   int(m[7].value),
+                "date":        d,  # YYYYMMDD
+                "sessions":    float(m[0].value),
+                "users":       float(m[1].value),
+                "pageviews":   float(m[2].value),
+                "addToCarts":  float(m[3].value),
+                "conversions": float(m[4].value),
+                "totalRevenue":float(m[5].value),
+                "bounceRate":  float(m[6].value),
+                "averageSessionDuration": float(m[7].value),
+                "new_users":   float(m[8].value),
             })
         rows.sort(key=lambda x: x["date"])
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ga4/daily-channels")
+def api_ga4_daily_channels():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="date"), Dimension(name="sessionDefaultChannelGrouping")],
+            metrics=[
+                Metric(name="sessions"),
+                Metric(name="addToCarts"),
+                Metric(name="ecommercePurchases"),
+                Metric(name="totalRevenue"),
+                Metric(name="averageSessionDuration"),
+                Metric(name="bounceRate"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            d = row.dimension_values[0].value
+            m = row.metric_values
+            rows.append({
+                "date": d,
+                "sessionDefaultChannelGrouping": row.dimension_values[1].value,
+                "sessions":    float(m[0].value),
+                "addToCarts":  float(m[1].value),
+                "conversions": float(m[2].value),
+                "totalRevenue":float(m[3].value),
+                "averageSessionDuration": float(m[4].value),
+                "bounceRate":  float(m[5].value),
+            })
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ga4/daily-sources")
+def api_ga4_daily_sources():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="date"), Dimension(name="sessionSourceMedium")],
+            metrics=[
+                Metric(name="sessions"),
+                Metric(name="addToCarts"),
+                Metric(name="ecommercePurchases"),
+                Metric(name="totalRevenue"),
+                Metric(name="averageSessionDuration"),
+                Metric(name="bounceRate"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            d = row.dimension_values[0].value
+            m = row.metric_values
+            rows.append({
+                "date": d,
+                "sessionSourceMedium": row.dimension_values[1].value,
+                "sessions":    float(m[0].value),
+                "addToCarts":  float(m[1].value),
+                "conversions": float(m[2].value),
+                "totalRevenue":float(m[3].value),
+                "averageSessionDuration": float(m[4].value),
+                "bounceRate":  float(m[5].value),
+            })
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ga4/items")
+def api_ga4_items():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="date"), Dimension(name="itemName")],
+            metrics=[
+                Metric(name="itemsViewed"),
+                Metric(name="addToCarts"),
+                Metric(name="itemsPurchased"),
+                Metric(name="itemRevenue"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            d = row.dimension_values[0].value
+            m = row.metric_values
+            rows.append({
+                "date": d,
+                "itemName":       row.dimension_values[1].value,
+                "itemsViewed":    float(m[0].value),
+                "addToCarts":     float(m[1].value),
+                "itemsPurchased": float(m[2].value),
+                "itemRevenue":    float(m[3].value),
+            })
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ga4/search")
+def api_ga4_search():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="date"), Dimension(name="searchTerm")],
+            metrics=[
+                Metric(name="eventCount"),
+                Metric(name="sessions"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            d = row.dimension_values[0].value
+            term = row.dimension_values[1].value
+            if not term or term in ('(not set)', ''):
+                continue
+            m = row.metric_values
+            rows.append({
+                "date": d,
+                "searchTerm": term,
+                "eventCount": float(m[0].value),
+                "sessions":   float(m[1].value),
+            })
         return jsonify({"data": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
