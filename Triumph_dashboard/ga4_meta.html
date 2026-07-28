@@ -63,20 +63,15 @@
   .overall-kpi-spend { display: flex; flex-direction: column; justify-content: center; }
   .overall-kpi-spend .sc { height: 100%; display: flex; flex-direction: column; justify-content: center; }
   .overall-kpi-right { display: flex; flex-direction: column; gap: 8px; }
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
   .kpi-row-label { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; padding-left: 2px; }
   .sc-sm { background: white; border-radius: 10px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
   .sc-sm .lbl { font-size: 10px; color: #65676b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
-  .sc-sm .val { font-size: 17px; font-weight: 700; white-space: nowrap; }
+  .sc-sm .val { font-size: 17px; font-weight: 700; white-space: nowrap; color: #222; }
   .sc-sm .sub { font-size: 10px; color: #999; margin-top: 3px; }
-  .sc-sm.c-teal .val { color: #13c2c2; }
-  .sc-sm.c-green .val { color: #52c41a; }
-  .sc-sm.c-orange .val { color: #fa8c16; }
-  .sc-sm.c-red .val { color: #f5222d; }
+  .sc-sm.kpi-empty { background: transparent; box-shadow: none; }
   .kpi-row.ga4-row .sc-sm { border-top: 2px solid #fff0f0; }
-  .kpi-row.ga4-row .sc-sm.c-teal .val { color: #f5222d; }
-  .kpi-row.ga4-row .sc-sm.c-green .val { color: #f5222d; opacity:.85; }
-  .kpi-row.ga4-row .sc-sm.c-red .val { color: #f5222d; }
+  .kpi-row.ga4-row .sc-sm.kpi-empty { border-top: none; }
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
 
   .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
@@ -1105,23 +1100,27 @@ async function renderOverall(s, e) {
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
     sc('c-blue','💰 合計花費',fmtM(totSpend),fmtChg(totSpend,pSpend));
-  const totCplc = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
-  const ga4TotCvr = ga4Tot.sessions>0 ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
+  const totCplc   = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
+  const ga4TotCvr = ga4Tot.sessions>0  ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
   const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
+  const kpiEmpty  = `<div class="sc-sm kpi-empty"></div>`;
+  // 7 cols: 購買 | 營收 | ROAS | CPA | CPLC | GA4 CVR | GA4 VPT
   document.getElementById('overallAdCards').innerHTML = [
-    scSm('c-teal',  '購買',  fmtN(totBuy),              fmtChg(totBuy,pBuy)),
-    scSm('c-green', '營收',  fmtM(totRev),              fmtChg(totRev,pRev)),
-    scSm('c-orange','ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
-    scSm('',        'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
-    scSm('',        'CPLC',  totCplc>0?fmtM(totCplc):'—', ''),
+    scSm('', '購買',  fmtN(totBuy),              fmtChg(totBuy,pBuy)),
+    scSm('', '營收',  fmtM(totRev),              fmtChg(totRev,pRev)),
+    scSm('', 'ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
+    scSm('', 'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
+    scSm('', 'CPLC',  totCplc>0?fmtM(totCplc):'—', ''),
+    kpiEmpty, kpiEmpty,
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
-    scSm('c-teal',  '購買',  fmtN(ga4Tot.purchases),              fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
-    scSm('c-green', '營收',  fmtM(ga4Tot.revenue),                fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
-    scSm('c-red',   'ROAS',  ga4Roas.toFixed(2)+'x',              fmtChg(ga4Roas,pGa4Roas)),
-    scSm('',        'CPA',   ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
-    scSm('c-red',   'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', ''),
-    scSm('',        'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—',  ''),
+    scSm('', '購買',    fmtN(ga4Tot.purchases),              fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
+    scSm('', '營收',    fmtM(ga4Tot.revenue),                fmtChg(ga4Tot.revenue,ga4PrevTot.revenue)),
+    scSm('', 'ROAS',    ga4Roas.toFixed(2)+'x',              fmtChg(ga4Roas,pGa4Roas)),
+    scSm('', 'CPA',     ga4Tot.purchases>0?fmtM(ga4Cpa):'—', fmtChg(ga4Cpa,pGa4Cpa)),
+    kpiEmpty,
+    scSm('', 'GA4 CVR', ga4TotCvr>0?ga4TotCvr.toFixed(2)+'%':'—', ''),
+    scSm('', 'GA4 VPT', ga4TotVpt>0?fmtM(ga4TotVpt):'—', ''),
   ].join('');
 
   // daily trend
