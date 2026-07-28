@@ -1165,13 +1165,19 @@ async function renderOverall(s, e) {
       plugins:{
         legend:{position:'top', labels:{boxWidth:14, font:{size:11}}},
         datalabels:{
-          display: ctx => ctx.dataset.type !== 'line' && ctx.raw > 0,
+          clip: false,
+          display: ctx => {
+            if (ctx.dataset.type === 'line') return false;
+            const ds = ctx.chart.data.datasets;
+            const total = ds.filter(d=>d.type==='bar').reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
+            return total > 0 && ctx.raw/total > 0.08;
+          },
           formatter: (val, ctx) => {
             const ds = ctx.chart.data.datasets;
             const total = ds.filter(d=>d.type==='bar').reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
             return total > 0 ? (val/total*100).toFixed(0)+'%' : '';
           },
-          color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
+          color:'#fff', font:{size:11,weight:'bold'}, anchor:'center', align:'center',
         }
       },
       scales:{
@@ -1224,13 +1230,18 @@ async function renderOverall(s, e) {
       plugins:{
         legend:{position:'top', labels:{boxWidth:14, font:{size:11}}},
         datalabels:{
-          display: ctx => ctx.raw > 0,
+          clip: false,
+          display: ctx => {
+            const ds = ctx.chart.data.datasets;
+            const total = ds.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
+            return total > 0 && ctx.raw/total > 0.08;
+          },
           formatter:(val, ctx) => {
             const ds = ctx.chart.data.datasets;
             const total = ds.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
             return total>0 ? (val/total*100).toFixed(0)+'%' : '';
           },
-          color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
+          color:'#fff', font:{size:11,weight:'bold'}, anchor:'center', align:'center',
         }
       },
       scales:{
