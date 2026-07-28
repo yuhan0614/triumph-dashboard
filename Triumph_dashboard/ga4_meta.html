@@ -168,6 +168,7 @@
 
 <div class="tabs">
   <div class="tab active" id="tabBtnOverall" onclick="switchTab('overall')">🔴 媒體總成效</div>
+  <div class="tab" id="tabBtnGa4" onclick="switchTab('ga4')">📈 GA4 全站</div>
   <div class="tab" id="tabBtnMeta" onclick="switchTab('meta')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg)"/></svg>Meta 廣告</div>
   <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg2" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg2)"/></svg>Meta 素材</div>
   <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')"><svg width="16" height="16" viewBox="0 0 48 48" style="margin-right:5px;vertical-align:-2px" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.2 0 5.9 1.1 8.1 2.9l6-6C34.5 3.1 29.6 1 24 1 14.8 1 6.9 6.6 3.3 14.6l7 5.4C12 14.1 17.5 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-4 6.8-9.9 6.8-16.9z" /><path fill="#FBBC05" d="M10.3 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7-5.4A23 23 0 0 0 1 24c0 3.7.9 7.2 2.3 10.4l7-5.8z"/><path fill="#34A853" d="M24 47c5.6 0 10.3-1.9 13.7-5.1l-7.3-5.7c-1.9 1.3-4.2 2-6.4 2-6.5 0-12-4.6-13.9-10.8l-7 5.8C6.9 41.4 14.8 47 24 47z"/><path fill="none" d="M1 1h46v46H1z"/></svg>Google 廣告</div>
@@ -206,6 +207,23 @@
 </div>
 
 <div class="main">
+
+  <!-- ══════════ GA4 全站 ══════════ -->
+  <div id="tab-ga4" style="display:none">
+    <div class="summary-grid" id="ga4AllKpis" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))"><div class="loading-cell" style="padding:20px">載入中…</div></div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>📅 每日工作階段趨勢</h3><div class="chart-wrap"><canvas id="ga4AllTrendChart"></canvas></div></div>
+      <div class="chart-card"><h3>🌐 流量來源佔比</h3><div class="chart-wrap"><canvas id="ga4AllChannelChart"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-header"><h3>🌐 流量來源明細</h3></div>
+      <div class="table-wrap"><div id="ga4AllChannelTable"><div class="loading-cell" style="padding:20px">載入中…</div></div></div>
+    </div>
+    <div class="table-card" style="margin-top:14px">
+      <div class="table-header"><h3>📅 每日明細</h3></div>
+      <div class="table-wrap"><div id="ga4AllDailyTable"><div class="loading-cell" style="padding:20px">載入中…</div></div></div>
+    </div>
+  </div>
 
   <!-- ══════════ 媒體總成效 ══════════ -->
   <div id="tab-overall">
@@ -722,7 +740,7 @@ function fmtPp(cur, prev) {
 // ── tab / refresh ─────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
-  ['overall','meta','creative','google'].forEach(t => {
+  ['overall','ga4','meta','creative','google'].forEach(t => {
     document.getElementById('tabBtn'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', tab===t);
     document.getElementById('tab-'+t).style.display = tab===t ? '' : 'none';
   });
@@ -736,6 +754,7 @@ async function refresh() {
   setStatus('載入中…');
   try {
     if (activeTab === 'overall') await renderOverall(curStart, curEnd);
+    else if (activeTab === 'ga4') await renderGA4(curStart, curEnd);
     else if (activeTab === 'meta') await renderMeta(curStart, curEnd);
     else if (activeTab === 'creative') await renderCreative(curStart, curEnd);
     else await renderGads(curStart, curEnd);
@@ -1579,6 +1598,101 @@ async function loadGadsData() {
     };
   }).filter(r => r.date && r.campaign);
   return GADS_DATA;
+}
+
+let GA4_ALL_TREND = null, GA4_ALL_CHANNEL = null;
+async function renderGA4(s, e) {
+  const se = toApiDate(s), ee = toApiDate(e);
+  document.getElementById('ga4AllKpis').innerHTML = '<div class="loading-cell" style="padding:20px">載入中…</div>';
+
+  const [dailyRes, chanRes] = await Promise.all([
+    fetch(`/api/ga4?since=${se}&until=${ee}`).then(r=>r.json()),
+    fetch(`/api/ga4/channels?since=${se}&until=${ee}`).then(r=>r.json()),
+  ]);
+
+  if (dailyRes.error) {
+    document.getElementById('ga4AllKpis').innerHTML = `<div class="loading-cell" style="padding:20px;color:#f5222d">❌ ${dailyRes.error}</div>`;
+    return;
+  }
+
+  const daily = (dailyRes.data || []).sort((a,b)=>a.date>b.date?1:-1);
+  const totSessions = daily.reduce((s,r)=>s+r.sessions,0);
+  const totUsers    = daily.reduce((s,r)=>s+r.users,0);
+  const totPV       = daily.reduce((s,r)=>s+r.pageviews,0);
+  const totConv     = daily.reduce((s,r)=>s+(r.conversions||0),0);
+  const totRev      = daily.reduce((s,r)=>s+r.revenue,0);
+  const totNew      = daily.reduce((s,r)=>s+r.new_users,0);
+  const avgBounce   = daily.length ? daily.reduce((s,r)=>s+r.bounce_rate,0)/daily.length : 0;
+  const avgDur      = daily.length ? daily.reduce((s,r)=>s+r.avg_session,0)/daily.length : 0;
+  const fmtSec = t => { const m=Math.floor(t/60),sec=Math.round(t%60); return `${m}:${sec.toString().padStart(2,'0')}`; };
+
+  const kpi = (lbl,val,cls='') => `<div class="sc ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div></div>`;
+  document.getElementById('ga4AllKpis').innerHTML = [
+    kpi('工作階段',    fmtN(totSessions),   'c-blue'),
+    kpi('活躍使用者',  fmtN(totUsers),      'c-purple'),
+    kpi('新使用者',    fmtN(totNew)),
+    kpi('網頁瀏覽',    fmtN(totPV)),
+    kpi('購買數',      fmtN(totConv),       'c-teal'),
+    kpi('營收',        totRev>0?fmtM(totRev):'—', 'c-green'),
+    kpi('跳出率',      (avgBounce*100).toFixed(1)+'%'),
+    kpi('平均停留',    fmtSec(avgDur)),
+  ].join('');
+
+  // 趨勢圖
+  const labels = daily.map(r=>r.date.slice(5));
+  if (GA4_ALL_TREND) GA4_ALL_TREND.destroy();
+  GA4_ALL_TREND = new Chart(document.getElementById('ga4AllTrendChart'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      {type:'bar',  label:'工作階段', data:daily.map(r=>r.sessions), backgroundColor:'rgba(114,46,209,.45)', borderColor:'#722ed1', borderWidth:1, borderRadius:3, yAxisID:'y', order:2},
+      {type:'line', label:'使用者',   data:daily.map(r=>r.users),   borderColor:'#1677ff', backgroundColor:'transparent', borderWidth:2, pointRadius:2, tension:.3, yAxisID:'y', order:1},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'top', labels:{boxWidth:12, font:{size:11}}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:10}, maxTicksLimit:12}},
+        y:{beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10}}},
+      }}
+  });
+
+  // 來源圓餅
+  const channels = chanRes.data || [];
+  const COLORS = ['#1677ff','#52c41a','#fa8c16','#722ed1','#eb2f96','#13c2c2','#fadb14','#a0d911','#ff4d4f','#36cfc9'];
+  if (GA4_ALL_CHANNEL) GA4_ALL_CHANNEL.destroy();
+  GA4_ALL_CHANNEL = new Chart(document.getElementById('ga4AllChannelChart'), {
+    type:'doughnut',
+    data:{ labels:channels.map(c=>c.channel), datasets:[{data:channels.map(c=>c.sessions), backgroundColor:COLORS, borderWidth:2, borderColor:'#fff'}] },
+    options:{responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{legend:{position:'bottom', labels:{font:{size:11}, boxWidth:12}}}}
+  });
+
+  // 來源明細表
+  document.getElementById('ga4AllChannelTable').innerHTML = `<table>
+    <thead><tr><th>來源管道</th><th class="num">工作階段</th><th class="num">使用者</th><th class="num">購買</th><th class="num">營收</th></tr></thead>
+    <tbody>${channels.map(c=>`<tr>
+      <td>${c.channel}</td>
+      <td class="num">${fmtN(c.sessions)}</td>
+      <td class="num">${fmtN(c.users)}</td>
+      <td class="num">${fmtN(c.purchases)}</td>
+      <td class="num">${c.revenue>0?fmtM(c.revenue):'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+
+  // 每日明細表
+  document.getElementById('ga4AllDailyTable').innerHTML = `<table>
+    <thead><tr><th>日期</th><th class="num">工作階段</th><th class="num">使用者</th><th class="num">新使用者</th><th class="num">網頁瀏覽</th><th class="num">跳出率</th><th class="num">平均停留</th><th class="num">購買</th><th class="num">營收</th></tr></thead>
+    <tbody>${[...daily].reverse().map(r=>`<tr>
+      <td>${r.date}</td>
+      <td class="num">${fmtN(r.sessions)}</td>
+      <td class="num">${fmtN(r.users)}</td>
+      <td class="num">${fmtN(r.new_users)}</td>
+      <td class="num">${fmtN(r.pageviews)}</td>
+      <td class="num">${(r.bounce_rate*100).toFixed(1)}%</td>
+      <td class="num">${fmtSec(r.avg_session)}</td>
+      <td class="num">${fmtN(r.conversions||0)}</td>
+      <td class="num">${r.revenue>0?fmtM(r.revenue):'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
 
 async function renderGads(s, e) {

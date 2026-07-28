@@ -85,6 +85,43 @@ SOURCE_MAP = {
     ("google",     "cpc"): "Google",
 }
 
+@app.route("/api/ga4/channels")
+def api_ga4_channels():
+    since = request.args.get("since")
+    until = request.args.get("until")
+    if not since or not until:
+        today = datetime.now(TZ_TAIPEI)
+        until = today.strftime("%Y-%m-%d")
+        since = (today - timedelta(days=6)).strftime("%Y-%m-%d")
+    try:
+        client = ga4_client()
+        req = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY}",
+            date_ranges=[DateRange(start_date=since, end_date=until)],
+            dimensions=[Dimension(name="sessionDefaultChannelGrouping")],
+            metrics=[
+                Metric(name="sessions"),
+                Metric(name="activeUsers"),
+                Metric(name="ecommercePurchases"),
+                Metric(name="totalRevenue"),
+            ],
+        )
+        resp = client.run_report(req)
+        rows = []
+        for row in resp.rows:
+            m = row.metric_values
+            rows.append({
+                "channel":   row.dimension_values[0].value,
+                "sessions":  int(m[0].value),
+                "users":     int(m[1].value),
+                "purchases": int(float(m[2].value)),
+                "revenue":   float(m[3].value),
+            })
+        rows.sort(key=lambda x: x["sessions"], reverse=True)
+        return jsonify({"data": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/ga4/sources")
 def api_ga4_sources():
     since = request.args.get("since")
