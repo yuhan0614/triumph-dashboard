@@ -24,7 +24,7 @@ TRIUMPH_CREATIVES = os.environ.get(
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
 GA4_PROPERTY = "178359594"
-CACHE_TTL = 1800  # 30 分鐘
+CACHE_TTL = 7200  # 2 小時
 
 # ── Cache helpers ─────────────────────────────────────────────
 
@@ -357,6 +357,37 @@ def api_ga4_sources():
     since, until = _ga4_dates(request)
     try:
         return with_cache(ga4_key("sources", since, until), lambda: _fetch_ga4_sources(since, until))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/ga4/bundle")
+def api_ga4_bundle():
+    """一次回傳所有 GA4 資料，讓前端只打一個請求。"""
+    since, until = _ga4_dates(request)
+    ck = ga4_key("bundle", since, until)
+    cached = read_cache(ck, ttl=CACHE_TTL)
+    if cached:
+        return jsonify({**cached["data"], "cached": True, "updated": cached.get("updated", "")})
+    try:
+        import concurrent.futures
+        fetchers = {
+            "daily":          lambda: _fetch_ga4_daily(since, until),
+            "daily_channels": lambda: _fetch_ga4_daily_channels(since, until),
+            "daily_sources":  lambda: _fetch_ga4_daily_sources(since, until),
+            "items":          lambda: _fetch_ga4_items(since, until),
+            "search":         lambda: _fetch_ga4_search(since, until),
+            "channels":       lambda: _fetch_ga4_channels(since, until),
+            "sources":        lambda: _fetch_ga4_sources(since, until),
+        }
+        results = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=7) as ex:
+            futures = {ex.submit(fn): name for name, fn in fetchers.items()}
+            for fut in concurrent.futures.as_completed(futures):
+                name = futures[fut]
+                results[name] = fut.result()
+        payload = {**results, "updated": taipei_now()}
+        write_cache(ck, {"data": {k: v for k, v in payload.items() if k != "updated"}, "updated": taipei_now()})
+        return jsonify({**payload, "cached": False})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

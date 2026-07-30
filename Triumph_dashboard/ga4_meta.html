@@ -1591,22 +1591,59 @@ let _ga4TrendChart = null, _ga4PieSess = null, _ga4PieRev = null;
 async function renderGA4(s, e) {
   const se = toApiDate(s), ee = toApiDate(e);
   const el = document.getElementById('tab-ga4');
-  el.innerHTML = '<div style="text-align:center;padding:60px;color:#aaa">載入中…</div>';
 
   const [ps, pe] = getPrevRange(s, e);
   const pse = toApiDate(ps), pee = toApiDate(pe);
 
-  const [dailyRes, dailyChRes, dailySmRes, itemsRes, searchRes, prevDailyRes,
-         metaSpendRes, gadsAll] = await Promise.all([
-    fetch(`/api/ga4?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/ga4/daily-channels?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/ga4/daily-sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/ga4/items?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/ga4/search?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/ga4?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({data:[]})),
+  // localStorage 快取 key
+  const lsKey  = `ga4_bundle_${se}_${ee}`;
+  const lsKeyP = `ga4_bundle_${pse}_${pee}`;
+  const lsMeta = `meta_daily_${se}_${ee}`;
+
+  // 有舊資料先渲染，背景再更新
+  const cached = localStorage.getItem(lsKey);
+  if (cached) {
+    try {
+      const b = JSON.parse(cached);
+      _renderGA4Content(el, b.bundle, b.prevBundle, b.metaSpendRes, b.gadsAll, s, e);
+    } catch(_) {}
+  } else {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:#aaa">載入中…</div>';
+  }
+
+  const [bundleRes, prevBundleRes, metaSpendRes, gadsAll] = await Promise.all([
+    fetch(`/api/ga4/bundle?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({})),
+    fetch(`/api/ga4/bundle?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({})),
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
     loadGadsData(),
   ]);
+
+  // 存 localStorage（TTL 2 小時）
+  try {
+    localStorage.setItem(lsKey, JSON.stringify({bundle: bundleRes, prevBundle: prevBundleRes, metaSpendRes, gadsAll, _ts: Date.now()}));
+  } catch(_) {}
+
+  const dailyRes    = {data: bundleRes.daily || []};
+  const dailyChRes  = {data: bundleRes.daily_channels || []};
+  const dailySmRes  = {data: bundleRes.daily_sources || []};
+  const itemsRes    = {data: bundleRes.items || []};
+  const searchRes   = {data: bundleRes.search || []};
+  const prevDailyRes = {data: (prevBundleRes.daily || [])};
+
+  if (bundleRes.error) {
+    el.innerHTML = `<div style="padding:20px;color:#f5222d">❌ ${bundleRes.error}</div>`;
+    return;
+  }
+  _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gadsAll, s, e);
+}
+
+async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gadsAll, s, e) {
+  const dailyRes    = {data: bundleRes.daily || []};
+  const dailyChRes  = {data: bundleRes.daily_channels || []};
+  const dailySmRes  = {data: bundleRes.daily_sources || []};
+  const itemsRes    = {data: bundleRes.items || []};
+  const searchRes   = {data: bundleRes.search || []};
+  const prevDailyRes = {data: (prevBundleRes.daily || [])};
 
   if (dailyRes.error) {
     el.innerHTML = `<div style="padding:20px;color:#f5222d">❌ ${dailyRes.error}</div>`;
