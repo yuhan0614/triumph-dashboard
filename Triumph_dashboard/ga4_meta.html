@@ -1650,6 +1650,9 @@ async function renderGA4(s, e) {
 }
 
 async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gadsAll, s, e) {
+  const [ps, pe] = getPrevRange(s, e);
+  const pse = toApiDate(ps), pee = toApiDate(pe);
+  const se = toApiDate(s), ee = toApiDate(e);
   const dailyRes    = {data: bundleRes.daily || []};
   const dailyChRes  = {data: bundleRes.daily_channels || []};
   const dailySmRes  = {data: bundleRes.daily_sources || []};
