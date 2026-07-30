@@ -126,7 +126,6 @@ def _fetch_ga4_daily_channels(since, until):
         dimensions=[Dimension(name="date"), Dimension(name="sessionDefaultChannelGrouping")],
         metrics=[
             Metric(name="sessions"),
-            Metric(name="keyEvents:add_to_cart"),
             Metric(name="ecommercePurchases"),
             Metric(name="totalRevenue"),
             Metric(name="averageSessionDuration"),
@@ -142,11 +141,10 @@ def _fetch_ga4_daily_channels(since, until):
             "date": d,
             "sessionDefaultChannelGrouping": row.dimension_values[1].value,
             "sessions":    float(m[0].value),
-            "addToCarts":  float(m[1].value),
-            "conversions": float(m[2].value),
-            "totalRevenue":float(m[3].value),
-            "averageSessionDuration": float(m[4].value),
-            "bounceRate":  float(m[5].value),
+            "conversions": float(m[1].value),
+            "totalRevenue":float(m[2].value),
+            "averageSessionDuration": float(m[3].value),
+            "bounceRate":  float(m[4].value),
         })
     return rows
 
@@ -157,7 +155,6 @@ def _fetch_ga4_daily_sources(since, until):
         dimensions=[Dimension(name="date"), Dimension(name="sessionSourceMedium")],
         metrics=[
             Metric(name="sessions"),
-            Metric(name="keyEvents:add_to_cart"),
             Metric(name="ecommercePurchases"),
             Metric(name="totalRevenue"),
             Metric(name="averageSessionDuration"),
@@ -173,11 +170,10 @@ def _fetch_ga4_daily_sources(since, until):
             "date": d,
             "sessionSourceMedium": row.dimension_values[1].value,
             "sessions":    float(m[0].value),
-            "addToCarts":  float(m[1].value),
-            "conversions": float(m[2].value),
-            "totalRevenue":float(m[3].value),
-            "averageSessionDuration": float(m[4].value),
-            "bounceRate":  float(m[5].value),
+            "conversions": float(m[1].value),
+            "totalRevenue":float(m[2].value),
+            "averageSessionDuration": float(m[3].value),
+            "bounceRate":  float(m[4].value),
         })
     return rows
 
@@ -188,7 +184,7 @@ def _fetch_ga4_items(since, until):
         dimensions=[Dimension(name="date"), Dimension(name="itemName")],
         metrics=[
             Metric(name="itemsViewed"),
-            Metric(name="keyEvents:add_to_cart"),
+            Metric(name="itemsAddedToCart"),
             Metric(name="itemsPurchased"),
             Metric(name="itemRevenue"),
         ],
