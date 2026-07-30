@@ -194,7 +194,7 @@
     <button class="preset-btn" id="grpW" onclick="setGrp('W',this)">週</button>
     <button class="preset-btn" id="grpM" onclick="setGrp('M',this)">月</button>
   </div>
-  <button class="fetch-btn" id="fetchBtn" onclick="refresh()">
+  <button class="fetch-btn" id="fetchBtn" onclick="_invalidateTabCache();refresh(true)">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
     更新資料
   </button>
@@ -647,32 +647,32 @@ function applyPreset(days, el) {
   curStart = toStr(s); curEnd = toStr(e);
   setDateInputs(curStart, curEnd);
   clearPresetActive(); if (el) el.classList.add('active');
-  refresh();
+  _invalidateTabCache(); refresh();
 }
 function applyYesterday(el) {
   const d = new Date(today); d.setDate(today.getDate() - 1);
   curStart = curEnd = toStr(d);
   setDateInputs(curStart, curEnd);
   clearPresetActive(); if (el) el.classList.add('active');
-  refresh();
+  _invalidateTabCache(); refresh();
 }
 function applyMonth(el) {
   curStart = todayStr.slice(0,6) + '01';
   curEnd = todayStr;
   setDateInputs(curStart, curEnd);
   clearPresetActive(); if (el) el.classList.add('active');
-  refresh();
+  _invalidateTabCache(); refresh();
 }
 function applyCustom() {
   const s = document.getElementById('dateFrom').value.replace(/-/g,'');
   const e = document.getElementById('dateTo').value.replace(/-/g,'');
-  if (s && e) { curStart = s; curEnd = e; clearPresetActive(); refresh(); }
+  if (s && e) { curStart = s; curEnd = e; clearPresetActive(); _invalidateTabCache(); refresh(); }
 }
 function setGrp(g, el) {
   grp = g;
   document.querySelectorAll('.grp-btns .preset-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
-  refresh();
+  _invalidateTabCache(); refresh();
 }
 
 function inRange(d, s, e) { return d >= s && d <= e; }
@@ -726,18 +726,29 @@ function fmtPp(cur, prev) {
 }
 
 // ── tab / refresh ─────────────────────────────────────────────
+const _renderedTabs = {};  // { 'overall_2026-07-24_2026-07-30': true }
+
+function _tabCacheKey(tab) { return `${tab}_${curStart}_${curEnd}`; }
+function _invalidateTabCache() { Object.keys(_renderedTabs).forEach(k => delete _renderedTabs[k]); }
+
 function switchTab(tab) {
   activeTab = tab;
   ['overall','ga4','meta','creative','google'].forEach(t => {
     document.getElementById('tabBtn'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', tab===t);
     document.getElementById('tab-'+t).style.display = tab===t ? '' : 'none';
   });
+  // 已渲染過就不重新 fetch，直接顯示
+  if (_renderedTabs[_tabCacheKey(tab)]) {
+    setStatus('');
+    return;
+  }
   refresh();
 }
 function setStatus(msg, cls='') { const s=document.getElementById('statusText'); s.textContent=msg; s.className='status-text '+cls; }
 function showLoading(on) { document.getElementById('loadingOverlay').classList.toggle('show', on); document.getElementById('fetchBtn').disabled = on; }
 
-async function refresh() {
+async function refresh(force=false) {
+  if (!force && _renderedTabs[_tabCacheKey(activeTab)]) return;
   showLoading(true);
   setStatus('載入中…');
   try {
@@ -746,6 +757,7 @@ async function refresh() {
     else if (activeTab === 'meta') await renderMeta(curStart, curEnd);
     else if (activeTab === 'creative') await renderCreative(curStart, curEnd);
     else await renderGads(curStart, curEnd);
+    _renderedTabs[_tabCacheKey(activeTab)] = true;
   } catch (err) {
     setStatus('❌ ' + err.message, 'err');
     console.error(err);
