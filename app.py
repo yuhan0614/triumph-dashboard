@@ -123,7 +123,7 @@ def _fetch_ga4_daily_channels(since, until):
     req = RunReportRequest(
         property=f"properties/{GA4_PROPERTY}",
         date_ranges=[DateRange(start_date=since, end_date=until)],
-        dimensions=[Dimension(name="date"), Dimension(name="sessionDefaultChannelGrouping")],
+        dimensions=[Dimension(name="date"), Dimension(name="sessionChannelGroup")],
         metrics=[
             Metric(name="sessions"),
             Metric(name="ecommercePurchases"),
@@ -139,7 +139,7 @@ def _fetch_ga4_daily_channels(since, until):
         m = row.metric_values
         rows.append({
             "date": d,
-            "sessionDefaultChannelGrouping": row.dimension_values[1].value,
+            "sessionChannelGroup": row.dimension_values[1].value,
             "sessions":    float(m[0].value),
             "conversions": float(m[1].value),
             "totalRevenue":float(m[2].value),
@@ -226,7 +226,7 @@ def _fetch_ga4_channels(since, until):
     req = RunReportRequest(
         property=f"properties/{GA4_PROPERTY}",
         date_ranges=[DateRange(start_date=since, end_date=until)],
-        dimensions=[Dimension(name="sessionDefaultChannelGrouping")],
+        dimensions=[Dimension(name="sessionChannelGroup")],
         metrics=[
             Metric(name="sessions"),
             Metric(name="activeUsers"),

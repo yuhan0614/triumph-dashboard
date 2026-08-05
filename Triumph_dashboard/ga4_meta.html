@@ -2166,7 +2166,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   // --- channels aggregate ---
   const chMap = {};
   (dailyChRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
-    const k = r.sessionDefaultChannelGrouping||'(other)';
+    const k = r.sessionChannelGroup||'(other)';
     if (!chMap[k]) chMap[k] = {k,sessions:0,addToCarts:0,conversions:0,totalRevenue:0,_dur:0,_bRate:0,_n:0};
     const m = chMap[k];
     m.sessions+=parseFloat(r.sessions||0); m.addToCarts+=parseFloat(r.addToCarts||0);
@@ -2192,7 +2192,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   // --- prev period channel/source maps ---
   const prevChMap = {};
   (dailyChRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD).forEach(r => {
-    const k = r.sessionDefaultChannelGrouping||'(other)';
+    const k = r.sessionChannelGroup||'(other)';
     if (!prevChMap[k]) prevChMap[k]={sessions:0,conversions:0,totalRevenue:0};
     prevChMap[k].sessions+=parseFloat(r.sessions||0); prevChMap[k].conversions+=parseFloat(r.conversions||0); prevChMap[k].totalRevenue+=parseFloat(r.totalRevenue||0);
   });
@@ -2303,7 +2303,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
     </tr>`;
   };
   const cRow = r => {
-    const p = prevChMap[r.k||r.sessionDefaultChannelGrouping||'(other)']||{};
+    const p = prevChMap[r.k||r.sessionChannelGroup||'(other)']||{};
     const revPct = totalChRev>0?parseFloat(r.totalRevenue||0)/totalChRev*100:0;
     const prevRevPct = prevTotalChRev>0?(p.totalRevenue||0)/prevTotalChRev*100:0;
     return `<tr>
@@ -2479,7 +2479,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   const srcByDate = {};
   (dailyChRes.data||[]).forEach(r => {
     const k = groupKey((r.date||'').replace(/-/g,''));
-    const g = CH_GROUP(r.sessionDefaultChannelGrouping);
+    const g = CH_GROUP(r.sessionChannelGroup);
     if (!srcByDate[k]) srcByDate[k] = {};
     if (!srcByDate[k][g]) srcByDate[k][g] = {rev:0, sess:0};
     srcByDate[k][g].rev  += r.totalRevenue||0;
