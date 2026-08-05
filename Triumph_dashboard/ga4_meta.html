@@ -1754,10 +1754,6 @@ async function renderOverallV2(s, e) {
   const tLabels = tDates.map(k=>groupLabel(k));
 
   // 所有指標計算
-  const totSpend = cTot.spend;
-  const fmtRaw = v => Math.round(v||0).toLocaleString('zh-TW');
-  const fmtN   = v => Math.round(v||0).toLocaleString('zh-TW');
-
   const metaCtr   = metaTot.impressions>0 ? metaTot.link_clicks/metaTot.impressions*100 : 0;
   const metaRoasV = metaTot.spend>0 ? metaTot.purchase_value/metaTot.spend : 0;
   const metaCpaV  = metaTot.purchase>0 ? metaTot.spend/metaTot.purchase : 0;
