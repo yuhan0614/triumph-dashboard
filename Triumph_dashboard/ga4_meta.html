@@ -1141,6 +1141,13 @@ function toggleMetaCamp(safeId) {
   rows.forEach(r => r.style.display = open ? 'none' : '');
   if (btn) btn.textContent = open ? '▶' : '▼';
 }
+function _v2Toggle(media) {
+  const rows = document.querySelectorAll(`._v2detail-${media}`);
+  const btn  = document.getElementById(`_v2exp-${media}`);
+  const open = rows[0] && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : '');
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
 function toggleDetail(channel) {
   const rows = document.querySelectorAll(`.detail-${channel}`);
   const btn  = document.getElementById(`expand-${channel}`);
@@ -1617,12 +1624,13 @@ async function renderOverallV2(s, e) {
   const [ps, pe] = getPrevRange(s, e);
   const pse = toApiDate(ps), pee = toApiDate(pe);
 
-  const [trendRes, ga4Res, gadsAll, metaPrevRes, ga4PrevRes] = await Promise.all([
+  const [trendRes, ga4Res, gadsAll, metaPrevRes, ga4PrevRes, metaCampRes] = await Promise.all([
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
     loadGadsData(),
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${pse}&until=${pee}&level=account&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
   ]);
 
   const metaTrend = trendRes.data || [];
@@ -1634,7 +1642,7 @@ async function renderOverallV2(s, e) {
   }), {spend:0,purchase:0,purchase_value:0,link_clicks:0,impressions:0});
 
   const gadsRows = gadsAll.filter(r=>r.date>=s&&r.date<=e);
-  const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+r.clicks}),{cost:0,purchase:0,revenue:0,clicks:0});
+  const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,imp:a.imp+r.imp,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+r.clicks}),{cost:0,imp:0,purchase:0,revenue:0,clicks:0});
 
   const ga4Rows = ga4Res.data || [];
   const ga4By = {};
@@ -1802,32 +1810,78 @@ async function renderOverallV2(s, e) {
   const ga4BuyArr  = tDates.map(k=>byDate[k].ga4Buy||0);
 
   // 媒體比較 table rows
-  const mediaTableRows = [
-    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, cplc:metaCplcV, buy:metaTot.purchase, cvr:metaCvrV, rev:metaTot.purchase_value, roas:metaRoasV, cpa:metaCpaV, g4buy:ga4M.purchases, g4cvr:ga4MetaCvrV, g4rev:ga4M.revenue, g4roas:ga4MetaRoasV, g4cpa:ga4MetaCpaV, g4vpt:ga4MetaVptV},
-    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp||0,      clicks:gadsTot.clicks,      ctr:gCtr,    cplc:gCplcV,    buy:gadsTot.purchase, cvr:gCvrV,    rev:gadsTot.revenue,        roas:gRoasV,    cpa:gCpaV,    g4buy:ga4G.purchases, g4cvr:ga4GCvrV,  g4rev:ga4G.revenue, g4roas:ga4GRoasV, g4cpa:ga4GCpaV, g4vpt:ga4GVptV},
-    {name:'合計',   color:'#555',    spend:totSpend,       imp:totImp,               clicks:totClicks2,          ctr:totCtr,  cplc:totCplc,   buy:totAdBuy2,        cvr:totCvr,   rev:totAdRev2,              roas:totRoasV,  cpa:totCpaV,  g4buy:totG4Buy2,      g4cvr:totG4CvrV, g4rev:totG4Rev2,    g4roas:totG4RoasV,g4cpa:totG4CpaV,g4vpt:totG4VptV},
-  ];
-  const mediaTableHTML = mediaTableRows.map((r,i) => `
-    <tr style="${i===2?'font-weight:700;border-top:2px solid #e5e7eb;background:#f8fafc':'font-weight:600'}">
-      <td style="padding:10px 12px;white-space:nowrap"><span style="color:${r.color}">${r.name}</span></td>
-      <td style="padding:10px 12px;text-align:right;white-space:nowrap">NT$${fmtRaw(r.spend)}</td>
-      <td style="padding:10px 12px;text-align:right">${i===2?'100%':(totSpend>0?(r.spend/totSpend*100).toFixed(1)+'%':'-')}</td>
-      <td style="padding:10px 12px;text-align:right">${fmtN(r.imp)}</td>
-      <td style="padding:10px 12px;text-align:right">${fmtN(r.clicks)}</td>
-      <td style="padding:10px 12px;text-align:right">${r.ctr.toFixed(2)}%</td>
-      <td style="padding:10px 12px;text-align:right">${r.cplc>0?'NT$'+fmtRaw(r.cplc):'-'}</td>
-      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${fmtN(r.buy)}</td>
-      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.cvr>0?r.cvr.toFixed(2)+'%':'-'}</td>
-      <td style="padding:10px 12px;text-align:right;background:#eff6ff">NT$${fmtRaw(r.rev)}</td>
-      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.roas.toFixed(2)}x</td>
-      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.buy>0?'NT$'+fmtRaw(r.cpa):'-'}</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4;border-left:2px solid #bbf7d0">${fmtN(r.g4buy)}</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4cvr>0?r.g4cvr.toFixed(2)+'%':'-'}</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">NT$${fmtRaw(r.g4rev)}</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4roas.toFixed(2)}x</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4buy>0?'NT$'+fmtRaw(r.g4cpa):'-'}</td>
-      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4vpt>0?'NT$'+fmtRaw(r.g4vpt):'-'}</td>
-    </tr>`).join('');
+  const _tdS = 'padding:10px 12px;text-align:right;white-space:nowrap;font-size:13px';
+  const _tdSB = _tdS+';background:#eff6ff';
+  const _tdSG = _tdS+';background:#f0fdf4';
+  const mediaRow = (r, isTot, nameCell) => `
+    <tr style="${isTot?'font-weight:700;border-top:2px solid #e5e7eb;background:#f8fafc':'font-weight:600'}">
+      <td style="padding:10px 12px;white-space:nowrap;font-size:13px">${nameCell}</td>
+      <td style="${_tdS}">NT$${fmtRaw(r.spend)}</td>
+      <td style="${_tdS}">${isTot?'100%':(totSpend>0?(r.spend/totSpend*100).toFixed(1)+'%':'-')}</td>
+      <td style="${_tdS}">${fmtN(r.imp)}</td>
+      <td style="${_tdS}">${fmtN(r.clicks)}</td>
+      <td style="${_tdS}">${r.ctr.toFixed(2)}%</td>
+      <td style="${_tdS}">${r.cplc>0?'NT$'+fmtRaw(r.cplc):'-'}</td>
+      <td style="${_tdSB}">${fmtN(r.buy)}</td>
+      <td style="${_tdSB}">${r.cvr>0?r.cvr.toFixed(2)+'%':'-'}</td>
+      <td style="${_tdSB}">NT$${fmtRaw(r.rev)}</td>
+      <td style="${_tdSB}">${r.roas.toFixed(2)}x</td>
+      <td style="${_tdSB}">${r.buy>0?'NT$'+fmtRaw(r.cpa):'-'}</td>
+      <td style="${_tdSG};border-left:2px solid #bbf7d0">${fmtN(r.g4buy)}</td>
+      <td style="${_tdSG}">${r.g4cvr>0?r.g4cvr.toFixed(2)+'%':'-'}</td>
+      <td style="${_tdSG}">NT$${fmtRaw(r.g4rev)}</td>
+      <td style="${_tdSG}">${r.g4roas.toFixed(2)}x</td>
+      <td style="${_tdSG}">${r.g4buy>0?'NT$'+fmtRaw(r.g4cpa):'-'}</td>
+      <td style="${_tdSG}">${r.g4vpt>0?'NT$'+fmtRaw(r.g4vpt):'-'}</td>
+    </tr>`;
+
+  // Meta campaign detail rows
+  const metaCamps = (metaCampRes.data||[]).map(c => {
+    const sp=c.spend||0, cl=c.link_clicks||0, bu=c.purchase||0, rv=c.purchase_value||0;
+    return {name:c.campaign_name||c.campaign_id||'—', spend:sp, imp:c.impressions||0, clicks:cl,
+      ctr:c.impressions>0?cl/c.impressions*100:0, cplc:cl>0?sp/cl:0,
+      buy:bu, cvr:cl>0?bu/cl*100:0, rev:rv, roas:sp>0?rv/sp:0, cpa:bu>0?sp/bu:0,
+      imp_ok:true};
+  });
+  const gadsCamps = Object.values(gadsRows.reduce((a,r)=>{
+    const k=r.campaign;
+    if(!a[k]) a[k]={name:k,spend:0,imp:0,clicks:0,buy:0,rev:0};
+    a[k].spend+=r.cost; a[k].imp+=r.imp; a[k].clicks+=r.clicks; a[k].buy+=r.purchase; a[k].rev+=r.revenue;
+    return a;
+  },{})).map(c=>({...c, ctr:c.imp>0?c.clicks/c.imp*100:0, cplc:c.clicks>0?c.spend/c.clicks:0,
+    cvr:c.clicks>0?c.buy/c.clicks*100:0, roas:c.spend>0?c.rev/c.spend:0, cpa:c.buy>0?c.spend/c.buy:0,
+    g4buy:0,g4cvr:0,g4rev:0,g4roas:0,g4cpa:0,g4vpt:0}));
+
+  const detailRow = c => `
+    <tr class="_v2detail _v2detail-${c._media}" style="display:none;background:#fafafa;font-size:12px;color:#555">
+      <td style="padding:7px 12px 7px 28px;white-space:nowrap">${c.name}</td>
+      <td style="padding:7px 12px;text-align:right">NT$${fmtRaw(c.spend)}</td>
+      <td style="padding:7px 12px;text-align:right">—</td>
+      <td style="padding:7px 12px;text-align:right">${fmtN(c.imp)}</td>
+      <td style="padding:7px 12px;text-align:right">${fmtN(c.clicks)}</td>
+      <td style="padding:7px 12px;text-align:right">${c.ctr.toFixed(2)}%</td>
+      <td style="padding:7px 12px;text-align:right">${c.cplc>0?'NT$'+fmtRaw(c.cplc):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${fmtN(c.buy)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.cvr>0?c.cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">NT$${fmtRaw(c.rev)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.roas.toFixed(2)}x</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.buy>0?'NT$'+fmtRaw(c.cpa):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4;border-left:2px solid #bbf7d0">${fmtN(c.g4buy)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4cvr>0?c.g4cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">NT$${fmtRaw(c.g4rev)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4roas>0?c.g4roas.toFixed(2)+'x':'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4buy>0?'NT$'+fmtRaw(c.g4cpa):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">-</td>
+    </tr>`;
+
+  const mediaTableHTML =
+    mediaRow({spend:metaTot.spend,imp:metaTot.impressions,clicks:metaTot.link_clicks,ctr:metaCtr,cplc:metaCplcV,buy:metaTot.purchase,cvr:metaCvrV,rev:metaTot.purchase_value,roas:metaRoasV,cpa:metaCpaV,g4buy:ga4M.purchases,g4cvr:ga4MetaCvrV,g4rev:ga4M.revenue,g4roas:ga4MetaRoasV,g4cpa:ga4MetaCpaV,g4vpt:ga4MetaVptV}, false,
+      `<span id="_v2exp-Meta" onclick="_v2Toggle('Meta')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="color:#4285f4">Meta</span>`) +
+    metaCamps.map(c=>detailRow({...c,_media:'Meta'})).join('') +
+    mediaRow({spend:gadsTot.cost,imp:gadsTot.imp||0,clicks:gadsTot.clicks,ctr:gCtr,cplc:gCplcV,buy:gadsTot.purchase,cvr:gCvrV,rev:gadsTot.revenue,roas:gRoasV,cpa:gCpaV,g4buy:ga4G.purchases,g4cvr:ga4GCvrV,g4rev:ga4G.revenue,g4roas:ga4GRoasV,g4cpa:ga4GCpaV,g4vpt:ga4GVptV}, false,
+      `<span id="_v2exp-Google" onclick="_v2Toggle('Google')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="color:#34a853">Google</span>`) +
+    gadsCamps.map(c=>detailRow({...c,_media:'Google'})).join('') +
+    mediaRow({spend:totSpend,imp:totImp,clicks:totClicks2,ctr:totCtr,cplc:totCplc,buy:totAdBuy2,cvr:totCvr,rev:totAdRev2,roas:totRoasV,cpa:totCpaV,g4buy:totG4Buy2,g4cvr:totG4CvrV,g4rev:totG4Rev2,g4roas:totG4RoasV,g4cpa:totG4CpaV,g4vpt:totG4VptV}, true, '<span style="color:#555">合計</span>');
 
   el.innerHTML = `<div style="padding:20px;max-width:1400px">
 
@@ -1858,27 +1912,7 @@ async function renderOverallV2(s, e) {
       </table>
     </div>
 
-    <!-- ② 四張圖 -->
-    <div style="display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:16px;margin-bottom:20px">
-      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📅 每日花費趨勢（Meta vs Google）</div>
-        <div style="position:relative;height:220px"><canvas id="_v2SpendChart"></canvas></div>
-      </div>
-      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;width:220px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:12px">💰 花費佔比（媒體）</div>
-        <div style="position:relative;height:220px"><canvas id="_v2SpendDonut"></canvas></div>
-      </div>
-      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📊 GA4 營收趨勢（Meta vs Google）</div>
-        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevChart"></canvas></div>
-      </div>
-      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;width:220px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:12px">✅ GA4 營收佔比（媒體）</div>
-        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevDonut"></canvas></div>
-      </div>
-    </div>
-
-    <!-- ③ 廣告+GA4 趨勢對比 -->
+    <!-- ② 花費×ROAS & 購買趨勢 -->
     <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
       <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;flex:1;min-width:0">
         <div style="font-weight:600;font-size:13px;margin-bottom:8px">花費 × ROAS 趨勢</div>
@@ -1896,6 +1930,26 @@ async function renderOverallV2(s, e) {
           <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2.5px;background:#059669;display:inline-block;border-radius:2px"></span>GA4 購買</span>
         </div>
         <div style="position:relative;height:230px"><canvas id="_v2Chart2"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ③ 四張圖（花費趨勢＋佔比 / GA4趨勢＋佔比） -->
+    <div style="display:grid;grid-template-columns:1fr 280px;grid-template-rows:auto auto;gap:16px;margin-bottom:20px">
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📅 每日花費趨勢（Meta vs Google）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2SpendChart"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">💰 花費佔比（媒體）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2SpendDonut"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📊 GA4 營收趨勢（Meta vs Google）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevChart"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">✅ GA4 營收佔比（媒體）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevDonut"></canvas></div>
       </div>
     </div>
 
