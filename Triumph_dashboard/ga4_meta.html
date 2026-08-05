@@ -1747,15 +1747,19 @@ async function renderOverallV2(s, e) {
   const tDates = Object.keys(byDate).sort();
   const tLabels = tDates.map(k=>groupLabel(k));
 
-  // 趨勢圖設定（每個指標同時顯示廣告+GA4兩條線）
-  const trendPairs = {
-    buy:  { label:'購買', ad:{label:'廣告購買',color:'#2563eb',data:tDates.map(k=>byDate[k].adBuy||0)},  ga4:{label:'GA4購買', color:'#059669',data:tDates.map(k=>byDate[k].ga4Buy||0)},  fmt:v=>Math.round(v).toLocaleString() },
-    rev:  { label:'營收', ad:{label:'廣告營收',color:'#7c3aed',data:tDates.map(k=>byDate[k].adRev||0)},  ga4:{label:'GA4營收', color:'#0d9488',data:tDates.map(k=>byDate[k].ga4Rev||0)},  fmt:v=>'NT$'+Math.round(v).toLocaleString() },
-    roas: { label:'ROAS', ad:{label:'廣告ROAS',color:'#ea580c',data:tDates.map(k=>byDate[k].spend>0?(byDate[k].adRev/byDate[k].spend):0)}, ga4:{label:'GA4ROAS',color:'#0891b2',data:tDates.map(k=>byDate[k].spend>0?(byDate[k].ga4Rev/byDate[k].spend):0)}, fmt:v=>v.toFixed(2)+'x' },
-    spend:{ label:'花費', ad:{label:'花費',color:'#dc2626',data:tDates.map(k=>byDate[k].spend||0)},       ga4:null, fmt:v=>'NT$'+Math.round(v).toLocaleString() },
-  };
+  const spendArr   = tDates.map(k => byDate[k].spend||0);
+  const adRoasArr  = tDates.map(k => byDate[k].spend>0 ? byDate[k].adRev/byDate[k].spend : 0);
+  const ga4RoasArr = tDates.map(k => byDate[k].spend>0 ? byDate[k].ga4Rev/byDate[k].spend : 0);
+  const adBuyArr   = tDates.map(k => byDate[k].adBuy||0);
+  const ga4BuyArr  = tDates.map(k => byDate[k].ga4Buy||0);
 
-  const btnStyle = (active) => `padding:5px 14px;border-radius:20px;border:1px solid ${active?'#dc2626':'#d1d5db'};cursor:pointer;font-size:12px;background:${active?'#dc2626':'#fff'};color:${active?'#fff':'#374151'}`;
+  const legendDot = (color, label) => `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#374151"><span style="width:28px;height:3px;background:${color};border-radius:2px;display:inline-block"></span>${label}</span>`;
+  const chartCard = (title, canvasId, legends) => `
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;flex:1;min-width:0">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">${title}</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">${legends}</div>
+      <div style="position:relative;height:250px"><canvas id="${canvasId}"></canvas></div>
+    </div>`;
 
   el.innerHTML = `
   <div style="padding:20px;max-width:1400px">
@@ -1785,52 +1789,47 @@ async function renderOverallV2(s, e) {
       </table>
     </div>
 
-    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <span style="font-weight:600;font-size:14px">趨勢對比</span>
-        <span style="color:#9ca3af;font-size:12px">選一個指標，同時看廣告口徑 vs GA4 口徑</span>
-        <div style="display:flex;gap:6px;margin-left:auto">
-          ${Object.entries(trendPairs).map(([k,p],i)=>`<button onclick="switchV2Metric('${k}')" id="v2m_${k}" style="${btnStyle(i===0)}">${p.label}</button>`).join('')}
-        </div>
-      </div>
-      <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px" id="_v2Legend">
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#2563eb;display:inline-block;border-radius:2px"></span>廣告口徑</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#059669;display:inline-block;border-radius:2px"></span>GA4 口徑</span>
-      </div>
-      <div style="position:relative;height:280px"><canvas id="_v2TrendCanvas"></canvas></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      ${chartCard(
+        '花費 × ROAS 趨勢', '_v2Chart1',
+        legendDot('#dc2626','花費（柱）') + legendDot('#ea580c','廣告 ROAS（線）') + legendDot('#059669','GA4 ROAS（線）')
+      )}
+      ${chartCard(
+        '購買趨勢：廣告 vs GA4', '_v2Chart2',
+        legendDot('#2563eb','廣告購買（柱）') + legendDot('#059669','GA4 購買（線）')
+      )}
     </div>
   </div>`;
 
   if (_v2TrendChart) { _v2TrendChart.destroy(); _v2TrendChart = null; }
 
-  function buildChart(key) {
-    const p = trendPairs[key];
-    const datasets = [{ type:'bar', label:p.ad.label, data:p.ad.data, backgroundColor:p.ad.color+'33', borderColor:p.ad.color, borderWidth:2, order:2 }];
-    if (p.ga4) datasets.push({ type:'line', label:p.ga4.label, data:p.ga4.data, borderColor:p.ga4.color, backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, order:1 });
-    return datasets;
-  }
-
-  _v2TrendChart = new Chart(document.getElementById('_v2TrendCanvas'), {
-    data:{ labels:tLabels, datasets:buildChart('buy') },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, datalabels:{display:false} },
-      scales:{ y:{ beginAtZero:true, ticks:{ callback: v=>Math.round(v).toLocaleString() } } }
+  const commonOpts = (y1Fmt, y2Fmt) => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend:{display:false}, datalabels:{display:false} },
+    scales: {
+      y:  { beginAtZero:true, position:'left',  ticks:{ callback: y1Fmt }, grid:{color:'#f3f4f6'} },
+      y2: { beginAtZero:true, position:'right', ticks:{ callback: y2Fmt }, grid:{drawOnChartArea:false} },
     }
   });
 
-  window.switchV2Metric = function(key) {
-    const p = trendPairs[key];
-    if (!p) return;
-    document.querySelectorAll('[id^="v2m_"]').forEach(b=>{ b.style.background='#fff'; b.style.color='#374151'; b.style.borderColor='#d1d5db'; });
-    const btn = document.getElementById('v2m_'+key);
-    if (btn) { btn.style.background='#dc2626'; btn.style.color='#fff'; btn.style.borderColor='#dc2626'; }
-    const leg = document.getElementById('_v2Legend');
-    if (leg) leg.style.display = p.ga4 ? 'flex' : 'none';
-    _v2TrendChart.data.datasets = buildChart(key);
-    _v2TrendChart.options.scales.y.ticks.callback = v => p.fmt(v);
-    _v2TrendChart.update();
-  };
+  // 圖一：花費柱 + 廣告ROAS線 + GA4ROAS線
+  _v2TrendChart = new Chart(document.getElementById('_v2Chart1'), {
+    data: { labels: tLabels, datasets: [
+      { type:'bar',  label:'花費',     data:spendArr,   backgroundColor:'rgba(220,38,38,0.15)', borderColor:'#dc2626', borderWidth:1.5, yAxisID:'y',  order:3 },
+      { type:'line', label:'廣告ROAS', data:adRoasArr,  borderColor:'#ea580c', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:1 },
+      { type:'line', label:'GA4ROAS',  data:ga4RoasArr, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:2, borderDash:[5,3] },
+    ]},
+    options: commonOpts(v=>'NT$'+Math.round(v).toLocaleString(), v=>v.toFixed(1)+'x'),
+  });
+
+  // 圖二：廣告購買柱 + GA4購買線
+  new Chart(document.getElementById('_v2Chart2'), {
+    data: { labels: tLabels, datasets: [
+      { type:'bar',  label:'廣告購買', data:adBuyArr,  backgroundColor:'rgba(37,99,235,0.15)', borderColor:'#2563eb', borderWidth:1.5, yAxisID:'y',  order:2 },
+      { type:'line', label:'GA4購買',  data:ga4BuyArr, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y', order:1 },
+    ]},
+    options: commonOpts(v=>Math.round(v).toLocaleString(), v=>Math.round(v).toLocaleString()),
+  });
 }
 
 let _ga4TrendChart = null, _ga4PieSess = null, _ga4PieRev = null;
