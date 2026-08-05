@@ -106,7 +106,7 @@
   tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: #e6f4ff; }
   .na { color: #ccc; }
-  .cell-name { font-weight: 600; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .cell-name { font-weight: 600; max-width: 400px; word-break: break-word; white-space: normal; display: block; }
   .chg-up { font-size: 10px; color: #52c41a; margin-left: 5px; }
   .chg-dn { font-size: 10px; color: #f5222d; margin-left: 5px; }
   .spend-bar-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
@@ -1835,52 +1835,68 @@ async function renderOverallV2(s, e) {
       <td style="${_tdSG}">${r.g4vpt>0?'NT$'+fmtRaw(r.g4vpt):'-'}</td>
     </tr>`;
 
-  // Meta campaign detail rows
-  const metaCamps = (metaCampRes.data||[]).map(c => {
-    const sp=c.spend||0, cl=c.link_clicks||0, bu=c.purchase||0, rv=c.purchase_value||0;
-    return {name:c.campaign_name||c.campaign_id||'—', spend:sp, imp:c.impressions||0, clicks:cl,
-      ctr:c.impressions>0?cl/c.impressions*100:0, cplc:cl>0?sp/cl:0,
-      buy:bu, cvr:cl>0?bu/cl*100:0, rev:rv, roas:sp>0?rv/sp:0, cpa:bu>0?sp/bu:0,
-      imp_ok:true};
+  // by-date maps for expand detail (same logic as renderOverall)
+  const v2MetaByKey = {}, v2GadsByKey = {}, v2Ga4ByKey = {};
+  metaTrend.forEach(r => {
+    const k = groupKey((r.date_start||'').replace(/-/g,''));
+    if (!v2MetaByKey[k]) v2MetaByKey[k] = {spend:0,imp:0,clicks:0,buy:0,rev:0};
+    v2MetaByKey[k].spend+=r.spend||0; v2MetaByKey[k].imp+=r.impressions||0;
+    v2MetaByKey[k].clicks+=r.link_clicks||0; v2MetaByKey[k].buy+=r.purchase||0; v2MetaByKey[k].rev+=r.purchase_value||0;
   });
-  const gadsCamps = Object.values(gadsRows.reduce((a,r)=>{
-    const k=r.campaign;
-    if(!a[k]) a[k]={name:k,spend:0,imp:0,clicks:0,buy:0,rev:0};
-    a[k].spend+=r.cost; a[k].imp+=r.imp; a[k].clicks+=r.clicks; a[k].buy+=r.purchase; a[k].rev+=r.revenue;
-    return a;
-  },{})).map(c=>({...c, ctr:c.imp>0?c.clicks/c.imp*100:0, cplc:c.clicks>0?c.spend/c.clicks:0,
-    cvr:c.clicks>0?c.buy/c.clicks*100:0, roas:c.spend>0?c.rev/c.spend:0, cpa:c.buy>0?c.spend/c.buy:0,
-    g4buy:0,g4cvr:0,g4rev:0,g4roas:0,g4cpa:0,g4vpt:0}));
+  gadsRows.forEach(r => {
+    const k = groupKey(r.date);
+    if (!v2GadsByKey[k]) v2GadsByKey[k] = {spend:0,imp:0,clicks:0,buy:0,rev:0};
+    v2GadsByKey[k].spend+=r.cost; v2GadsByKey[k].imp+=r.imp; v2GadsByKey[k].clicks+=r.clicks; v2GadsByKey[k].buy+=r.purchase; v2GadsByKey[k].rev+=r.revenue;
+  });
+  ga4Rows.forEach(r => {
+    const k = groupKey(r.date.replace(/-/g,''));
+    if (!v2Ga4ByKey[k]) v2Ga4ByKey[k] = {Meta:{sessions:0,purchases:0,revenue:0},Google:{sessions:0,purchases:0,revenue:0}};
+    if (v2Ga4ByKey[k][r.channel]) { v2Ga4ByKey[k][r.channel].sessions+=r.sessions; v2Ga4ByKey[k][r.channel].purchases+=r.purchases; v2Ga4ByKey[k][r.channel].revenue+=r.revenue; }
+  });
+  const v2AllKeys = [...new Set([...Object.keys(v2MetaByKey),...Object.keys(v2GadsByKey)])].sort();
 
-  const detailRow = c => `
-    <tr class="_v2detail _v2detail-${c._media}" style="display:none;background:#fafafa;font-size:12px;color:#555">
-      <td style="padding:7px 12px 7px 28px;white-space:nowrap">${c.name}</td>
-      <td style="padding:7px 12px;text-align:right">NT$${fmtRaw(c.spend)}</td>
-      <td style="padding:7px 12px;text-align:right">—</td>
-      <td style="padding:7px 12px;text-align:right">${fmtN(c.imp)}</td>
-      <td style="padding:7px 12px;text-align:right">${fmtN(c.clicks)}</td>
-      <td style="padding:7px 12px;text-align:right">${c.ctr.toFixed(2)}%</td>
-      <td style="padding:7px 12px;text-align:right">${c.cplc>0?'NT$'+fmtRaw(c.cplc):'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${fmtN(c.buy)}</td>
-      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.cvr>0?c.cvr.toFixed(2)+'%':'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#eff6ff">NT$${fmtRaw(c.rev)}</td>
-      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.roas.toFixed(2)}x</td>
-      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${c.buy>0?'NT$'+fmtRaw(c.cpa):'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4;border-left:2px solid #bbf7d0">${fmtN(c.g4buy)}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4cvr>0?c.g4cvr.toFixed(2)+'%':'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">NT$${fmtRaw(c.g4rev)}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4roas>0?c.g4roas.toFixed(2)+'x':'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${c.g4buy>0?'NT$'+fmtRaw(c.g4cpa):'-'}</td>
-      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">-</td>
+  const v2DetailRows = (channel) => v2AllKeys.map(k => {
+    const isGoogle = channel==='Google';
+    const v = (isGoogle ? v2GadsByKey[k] : v2MetaByKey[k]) || {spend:0,imp:0,clicks:0,buy:0,rev:0};
+    const g4 = (v2Ga4ByKey[k]||{})[channel] || {sessions:0,purchases:0,revenue:0};
+    const ctr   = v.imp>0    ? v.clicks/v.imp*100 : 0;
+    const cplc  = v.clicks>0 ? v.spend/v.clicks : 0;
+    const cvr   = v.clicks>0 ? v.buy/v.clicks*100 : 0;
+    const roas  = v.spend>0  ? v.rev/v.spend : 0;
+    const cpa   = v.buy>0    ? v.spend/v.buy : 0;
+    const g4roas= v.spend>0  ? g4.revenue/v.spend : 0;
+    const g4cpa = g4.purchases>0 ? v.spend/g4.purchases : 0;
+    const g4cvr = g4.sessions>0  ? g4.purchases/g4.sessions*100 : 0;
+    const g4vpt = g4.purchases>0 ? g4.revenue/g4.purchases : 0;
+    return `<tr class="_v2detail _v2detail-${channel}" style="display:none;background:#fafbfc;font-size:12px;color:#555">
+      <td style="padding:7px 12px 7px 28px;white-space:nowrap">${groupLabel(k)}</td>
+      <td style="padding:7px 12px;text-align:right">NT$${fmtRaw(v.spend)}</td>
+      <td style="padding:7px 12px;text-align:right">-</td>
+      <td style="padding:7px 12px;text-align:right">${fmtN(v.imp)}</td>
+      <td style="padding:7px 12px;text-align:right">${fmtN(v.clicks)}</td>
+      <td style="padding:7px 12px;text-align:right">${ctr.toFixed(2)}%</td>
+      <td style="padding:7px 12px;text-align:right">${cplc>0?'NT$'+fmtRaw(cplc):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${fmtN(v.buy)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${cvr>0?cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">NT$${fmtRaw(v.rev)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${roas.toFixed(2)}x</td>
+      <td style="padding:7px 12px;text-align:right;background:#eff6ff">${v.buy>0?'NT$'+fmtRaw(cpa):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4;border-left:2px solid #bbf7d0">${fmtN(g4.purchases)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${g4cvr>0?g4cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">NT$${fmtRaw(g4.revenue)}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${g4roas.toFixed(2)}x</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${g4.purchases>0?'NT$'+fmtRaw(g4cpa):'-'}</td>
+      <td style="padding:7px 12px;text-align:right;background:#f0fdf4">${g4vpt>0?'NT$'+fmtRaw(g4vpt):'-'}</td>
     </tr>`;
+  }).join('');
 
   const mediaTableHTML =
     mediaRow({spend:metaTot.spend,imp:metaTot.impressions,clicks:metaTot.link_clicks,ctr:metaCtr,cplc:metaCplcV,buy:metaTot.purchase,cvr:metaCvrV,rev:metaTot.purchase_value,roas:metaRoasV,cpa:metaCpaV,g4buy:ga4M.purchases,g4cvr:ga4MetaCvrV,g4rev:ga4M.revenue,g4roas:ga4MetaRoasV,g4cpa:ga4MetaCpaV,g4vpt:ga4MetaVptV}, false,
       `<span id="_v2exp-Meta" onclick="_v2Toggle('Meta')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="color:#4285f4">Meta</span>`) +
-    metaCamps.map(c=>detailRow({...c,_media:'Meta'})).join('') +
+    v2DetailRows('Meta') +
     mediaRow({spend:gadsTot.cost,imp:gadsTot.imp||0,clicks:gadsTot.clicks,ctr:gCtr,cplc:gCplcV,buy:gadsTot.purchase,cvr:gCvrV,rev:gadsTot.revenue,roas:gRoasV,cpa:gCpaV,g4buy:ga4G.purchases,g4cvr:ga4GCvrV,g4rev:ga4G.revenue,g4roas:ga4GRoasV,g4cpa:ga4GCpaV,g4vpt:ga4GVptV}, false,
       `<span id="_v2exp-Google" onclick="_v2Toggle('Google')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span style="color:#34a853">Google</span>`) +
-    gadsCamps.map(c=>detailRow({...c,_media:'Google'})).join('') +
+    v2DetailRows('Google') +
     mediaRow({spend:totSpend,imp:totImp,clicks:totClicks2,ctr:totCtr,cplc:totCplc,buy:totAdBuy2,cvr:totCvr,rev:totAdRev2,roas:totRoasV,cpa:totCpaV,g4buy:totG4Buy2,g4cvr:totG4CvrV,g4rev:totG4Rev2,g4roas:totG4RoasV,g4cpa:totG4CpaV,g4vpt:totG4VptV}, true, '<span style="color:#555">合計</span>');
 
   el.innerHTML = `<div style="padding:20px;max-width:1400px">
