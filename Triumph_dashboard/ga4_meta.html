@@ -1629,11 +1629,11 @@ async function renderOverallV2(s, e) {
   const metaTot = metaTrend.reduce((a,r)=>({
     spend: a.spend+(r.spend||0), purchase: a.purchase+(r.purchase||0),
     purchase_value: a.purchase_value+(r.purchase_value||0),
-    impressions: a.impressions+(r.impressions||0), link_clicks: a.link_clicks+(r.link_clicks||0),
-  }), {spend:0,purchase:0,purchase_value:0,impressions:0,link_clicks:0});
+    link_clicks: a.link_clicks+(r.link_clicks||0),
+  }), {spend:0,purchase:0,purchase_value:0,link_clicks:0});
 
   const gadsRows = gadsAll.filter(r=>r.date>=s&&r.date<=e);
-  const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,imp:a.imp+r.imp,clicks:a.clicks+r.clicks}),{cost:0,purchase:0,revenue:0,imp:0,clicks:0});
+  const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+r.clicks}),{cost:0,purchase:0,revenue:0,clicks:0});
 
   const ga4Rows = ga4Res.data || [];
   const ga4By = {};
@@ -1642,193 +1642,193 @@ async function renderOverallV2(s, e) {
   const ga4G = ga4By['Google'] || {sessions:0,purchases:0,revenue:0};
 
   const mp = (metaPrevRes.data||[])[0]||{};
-  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue}),{cost:0,purchase:0,revenue:0});
+  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+(r.clicks||0)}),{cost:0,purchase:0,revenue:0,clicks:0});
   const ga4PrevBy = {};
   (ga4PrevRes.data||[]).forEach(r=>{ if(!ga4PrevBy[r.channel]) ga4PrevBy[r.channel]={sessions:0,purchases:0,revenue:0}; ga4PrevBy[r.channel].sessions+=r.sessions; ga4PrevBy[r.channel].purchases+=r.purchases; ga4PrevBy[r.channel].revenue+=r.revenue; });
-  const ga4PrevM = ga4PrevBy['Meta']   || {purchases:0,revenue:0};
-  const ga4PrevG = ga4PrevBy['Google'] || {purchases:0,revenue:0};
+  const ga4PrevM = ga4PrevBy['Meta']   || {sessions:0,purchases:0,revenue:0};
+  const ga4PrevG = ga4PrevBy['Google'] || {sessions:0,purchases:0,revenue:0};
 
-  const fn  = v => Math.round(v||0).toLocaleString('zh-TW');
-  const fc  = v => 'NT$'+fn(v);
-  const fr  = v => (v||0).toFixed(2)+'x';
-  const fp  = v => Math.round(v||0).toLocaleString('zh-TW');
-  const chg = (cur,prev,inv=false) => {
-    if (!prev) return '';
-    const d=(cur-prev)/Math.abs(prev)*100;
-    const up=inv?d<0:d>0;
-    return `<span style="color:${up?'#16a34a':'#dc2626'};font-size:11px;margin-left:4px">${d>0?'+':''}${d.toFixed(1)}%</span>`;
+  // ── 每個渠道的指標 ──
+  function buildCh(spend, prevSpend, adBuy, prevAdBuy, adRev, prevAdRev, clicks, prevClicks,
+                   g4sess, g4buy, g4rev, pg4sess, pg4buy, pg4rev) {
+    const adRoas = spend>0 ? adRev/spend : 0;
+    const adCpa  = adBuy>0 ? spend/adBuy : 0;
+    const adCplc = clicks>0 ? spend/clicks : 0;
+    const prevAdRoas = prevSpend>0 ? prevAdRev/prevSpend : 0;
+    const prevAdCpa  = prevAdBuy>0 ? prevSpend/prevAdBuy : 0;
+    const prevAdCplc = prevClicks>0 ? prevSpend/prevClicks : 0;
+    const ga4Roas = spend>0 ? g4rev/spend : 0;
+    const ga4Cpa  = g4buy>0 ? spend/g4buy : 0;
+    const ga4Cvr  = g4sess>0 ? g4buy/g4sess*100 : 0;
+    const ga4Vpt  = g4buy>0 ? g4rev/g4buy : 0;
+    const prevGa4Roas = prevSpend>0 ? pg4rev/prevSpend : 0;
+    const prevGa4Cpa  = pg4buy>0 ? prevSpend/pg4buy : 0;
+    const prevGa4Cvr  = pg4sess>0 ? pg4buy/pg4sess*100 : 0;
+    const prevGa4Vpt  = pg4buy>0 ? pg4rev/pg4buy : 0;
+    return { spend,prevSpend, adBuy,prevAdBuy, adRev,prevAdRev, adRoas,prevAdRoas, adCpa,prevAdCpa, adCplc,prevAdCplc,
+             g4sess, g4buy,pg4buy, g4rev,pg4rev, ga4Roas,prevGa4Roas, ga4Cpa,prevGa4Cpa, ga4Cvr,prevGa4Cvr, ga4Vpt,prevGa4Vpt };
+  }
+  const cMeta = buildCh(metaTot.spend, mp.spend||0, metaTot.purchase, mp.purchase||0,
+    metaTot.purchase_value, mp.purchase_value||0, metaTot.link_clicks, mp.link_clicks||0,
+    ga4M.sessions, ga4M.purchases, ga4M.revenue, ga4PrevM.sessions, ga4PrevM.purchases, ga4PrevM.revenue);
+  const cGoogle = buildCh(gadsTot.cost, gadsPrev.cost, gadsTot.purchase, gadsPrev.purchase,
+    gadsTot.revenue, gadsPrev.revenue, gadsTot.clicks, gadsPrev.clicks,
+    ga4G.sessions, ga4G.purchases, ga4G.revenue, ga4PrevG.sessions, ga4PrevG.purchases, ga4PrevG.revenue);
+  const totSpend = cMeta.spend+cGoogle.spend, prevTotSpend = cMeta.prevSpend+cGoogle.prevSpend;
+  const totAdBuy = cMeta.adBuy+cGoogle.adBuy, prevTotAdBuy = cMeta.prevAdBuy+cGoogle.prevAdBuy;
+  const totAdRev = cMeta.adRev+cGoogle.adRev, prevTotAdRev = cMeta.prevAdRev+cGoogle.prevAdRev;
+  const totClicks = metaTot.link_clicks+gadsTot.clicks, prevTotClicks = (mp.link_clicks||0)+gadsPrev.clicks;
+  const totG4Sess = ga4M.sessions+ga4G.sessions, prevTotG4Sess = ga4PrevM.sessions+ga4PrevG.sessions;
+  const totG4Buy  = ga4M.purchases+ga4G.purchases, prevTotG4Buy = ga4PrevM.purchases+ga4PrevG.purchases;
+  const totG4Rev  = ga4M.revenue+ga4G.revenue, prevTotG4Rev = ga4PrevM.revenue+ga4PrevG.revenue;
+  const cTot = buildCh(totSpend, prevTotSpend, totAdBuy, prevTotAdBuy, totAdRev, prevTotAdRev,
+    totClicks, prevTotClicks, totG4Sess, totG4Buy, totG4Rev, prevTotG4Sess, prevTotG4Buy, prevTotG4Rev);
+
+  // ── 格式化 ──
+  const fm = v => 'NT$'+Math.round(v||0).toLocaleString('zh-TW');
+  const fn = v => Math.round(v||0).toLocaleString('zh-TW');
+  const fr = v => (v||0).toFixed(2)+'x';
+  const fp = v => (v||0).toFixed(2)+'%';
+  const chg = (cur, prev, inv=false, isPp=false) => {
+    if (!prev && prev !== 0) return '<span style="color:#9ca3af;font-size:10px">—</span>';
+    if (isPp) {
+      const d = cur - prev;
+      const up = inv ? d<0 : d>0;
+      return `<br><span style="color:${d===0?'#9ca3af':up?'#16a34a':'#dc2626'};font-size:10px">${d>0?'+':''}${d.toFixed(2)}pp</span>`;
+    }
+    if (!prev) return '<br><span style="color:#9ca3af;font-size:10px">—</span>';
+    const d = (cur-prev)/Math.abs(prev)*100;
+    const up = inv ? d<0 : d>0;
+    return `<br><span style="color:${d===0?'#9ca3af':up?'#16a34a':'#dc2626'};font-size:10px">${d>0?'+':''}${d.toFixed(1)}%</span>`;
   };
 
-  // 各渠道資料
-  const channels = [
-    {
-      name:'Meta', icon:'🔵',
-      spend: metaTot.spend, prevSpend: mp.spend||0,
-      adBuy: metaTot.purchase, prevAdBuy: mp.purchase||0,
-      adRev: metaTot.purchase_value, prevAdRev: mp.purchase_value||0,
-      cplc: metaTot.link_clicks>0?metaTot.spend/metaTot.link_clicks:0,
-      ga4Buy: ga4M.purchases, prevGa4Buy: ga4PrevM.purchases,
-      ga4Rev: ga4M.revenue, prevGa4Rev: ga4PrevM.revenue,
-      ga4Sess: ga4M.sessions,
-    },
-    {
-      name:'Google', icon:'🔴',
-      spend: gadsTot.cost, prevSpend: gadsPrev.cost,
-      adBuy: gadsTot.purchase, prevAdBuy: gadsPrev.purchase,
-      adRev: gadsTot.revenue, prevAdRev: gadsPrev.revenue,
-      cplc: gadsTot.clicks>0?gadsTot.cost/gadsTot.clicks:0,
-      ga4Buy: ga4G.purchases, prevGa4Buy: ga4PrevG.purchases,
-      ga4Rev: ga4G.revenue, prevGa4Rev: ga4PrevG.revenue,
-      ga4Sess: ga4G.sessions,
-    },
-  ];
-  const tot = {
-    spend: metaTot.spend+gadsTot.cost, prevSpend: (mp.spend||0)+gadsPrev.cost,
-    adBuy: metaTot.purchase+gadsTot.purchase, adRev: metaTot.purchase_value+gadsTot.revenue,
-    ga4Buy: ga4M.purchases+ga4G.purchases, ga4Rev: ga4M.revenue+ga4G.revenue,
-    ga4Sess: ga4M.sessions+ga4G.sessions,
-  };
-  tot.adRoas  = tot.spend>0?tot.adRev/tot.spend:0;
-  tot.adCpa   = tot.adBuy>0?tot.spend/tot.adBuy:0;
-  tot.ga4Roas = tot.spend>0?tot.ga4Rev/tot.spend:0;
-  tot.ga4Cpa  = tot.ga4Buy>0?tot.spend/tot.ga4Buy:0;
+  const th = (t, bg='') => `<th style="padding:8px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;white-space:nowrap;${bg}">${t}</th>`;
+  const td = (v, chgStr='', extra='') => `<td style="padding:10px 12px;text-align:right;white-space:nowrap;font-size:13px;line-height:1.3;${extra}">${v}${chgStr}</td>`;
+  const sep = `<td style="width:4px;background:#f3f4f6;padding:0"></td>`;
 
-  // 趨勢資料（by date）
+  const rowHTML = (label, icon, c, isTot=false) => {
+    const bg = isTot ? 'background:#f8fafc;font-weight:700;border-top:2px solid #e5e7eb' : '';
+    return `<tr style="${bg}">
+      <td style="padding:10px 12px;white-space:nowrap;font-size:13px;font-weight:${isTot?700:500}">${icon} ${label}</td>
+      ${td(fm(c.spend), chg(c.spend,c.prevSpend))}
+      ${sep}
+      ${td(fn(c.adBuy), chg(c.adBuy,c.prevAdBuy), 'background:#f0f7ff')}
+      ${td(fm(c.adRev), chg(c.adRev,c.prevAdRev), 'background:#f0f7ff')}
+      ${td(fr(c.adRoas), chg(c.adRoas,c.prevAdRoas), 'background:#f0f7ff')}
+      ${td(c.adCpa>0?fm(c.adCpa):'—', chg(c.adCpa,c.prevAdCpa,true), 'background:#f0f7ff')}
+      ${td(c.adCplc>0?fm(c.adCplc):'—', chg(c.adCplc,c.prevAdCplc,true), 'background:#f0f7ff')}
+      ${sep}
+      ${td(fn(c.g4buy), chg(c.g4buy,c.pg4buy), 'background:#f0fdf4')}
+      ${td(fm(c.g4rev), chg(c.g4rev,c.pg4rev), 'background:#f0fdf4')}
+      ${td(fr(c.ga4Roas), chg(c.ga4Roas,c.prevGa4Roas), 'background:#f0fdf4')}
+      ${td(c.ga4Cpa>0?fm(c.ga4Cpa):'—', chg(c.ga4Cpa,c.prevGa4Cpa,true), 'background:#f0fdf4')}
+      ${td(c.ga4Cvr>0?fp(c.ga4Cvr):'—', chg(c.ga4Cvr,c.prevGa4Cvr,false,true), 'background:#f0fdf4')}
+      ${td(c.ga4Vpt>0?fm(c.ga4Vpt):'—', chg(c.ga4Vpt,c.prevGa4Vpt), 'background:#f0fdf4')}
+    </tr>`;
+  };
+
+  // 趨勢資料
   const byDate = {};
   metaTrend.forEach(r=>{
     const k = groupKey((r.date_start||'').replace(/-/g,''));
     if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
-    byDate[k].spend += r.spend||0; byDate[k].adBuy += r.purchase||0; byDate[k].adRev += r.purchase_value||0;
+    byDate[k].spend+=r.spend||0; byDate[k].adBuy+=r.purchase||0; byDate[k].adRev+=r.purchase_value||0;
   });
   gadsRows.forEach(r=>{
     const k = groupKey(r.date.replace(/-/g,''));
     if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
-    byDate[k].spend += r.cost||0; byDate[k].adBuy += r.purchase||0; byDate[k].adRev += r.revenue||0;
+    byDate[k].spend+=r.cost||0; byDate[k].adBuy+=r.purchase||0; byDate[k].adRev+=r.revenue||0;
   });
   ga4Rows.forEach(r=>{
     const k = groupKey(r.date.replace(/-/g,''));
     if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
-    byDate[k].ga4Buy += r.purchases||0; byDate[k].ga4Rev += r.revenue||0;
+    byDate[k].ga4Buy+=r.purchases||0; byDate[k].ga4Rev+=r.revenue||0;
   });
-  const trendDates = Object.keys(byDate).sort();
-  const trendLabels = trendDates.map(k=>groupLabel(k));
+  const tDates = Object.keys(byDate).sort();
+  const tLabels = tDates.map(k=>groupLabel(k));
 
-  // ── HTML ──
-  const colH = 'padding:10px 14px;text-align:right;font-size:11px;color:#888;font-weight:600;white-space:nowrap;border-bottom:2px solid #e5e7eb';
-  const colHL = 'padding:10px 14px;text-align:left;font-size:11px;color:#888;font-weight:600;border-bottom:2px solid #e5e7eb';
-  const cell = (v,extra='') => `<td style="padding:10px 14px;text-align:right;white-space:nowrap;${extra}">${v}</td>`;
-  const rowHTML = (ch,isTotal=false) => {
-    const adRoas = ch.spend>0?(ch.adRev||0)/ch.spend:0;
-    const adCpa  = (ch.adBuy||0)>0?ch.spend/(ch.adBuy||1):0;
-    const ga4Roas= ch.spend>0?(ch.ga4Rev||0)/ch.spend:0;
-    const ga4Cpa = (ch.ga4Buy||0)>0?ch.spend/(ch.ga4Buy||1):0;
-    const bg = isTotal?'background:#f8fafc;font-weight:700':'';
-    return `<tr style="${bg}">
-      <td style="padding:10px 14px;white-space:nowrap;font-weight:${isTotal?700:500}">${isTotal?'⬛ 合計':ch.icon+' '+ch.name}</td>
-      ${cell(fc(ch.spend)+chg(ch.spend,ch.prevSpend,false))}
-      <td style="width:1px;background:#f0f0f0"></td>
-      ${cell(fp(ch.adBuy)+chg(ch.adBuy,ch.prevAdBuy))}
-      ${cell(fc(ch.adRev)+chg(ch.adRev,ch.prevAdRev))}
-      ${cell(fr(adRoas))}
-      ${cell(fc(adCpa),'color:'+(adCpa<1000?'inherit':'#dc2626'))}
-      <td style="width:1px;background:#f0f0f0"></td>
-      ${cell(fp(ch.ga4Buy)+chg(ch.ga4Buy,ch.prevGa4Buy))}
-      ${cell(fc(ch.ga4Rev)+chg(ch.ga4Rev,ch.prevGa4Rev))}
-      ${cell(fr(ga4Roas))}
-      ${cell(fc(ga4Cpa))}
-      ${cell(fn(ch.ga4Sess))}
-    </tr>`;
+  // 趨勢圖設定（每個指標同時顯示廣告+GA4兩條線）
+  const trendPairs = {
+    buy:  { label:'購買', ad:{label:'廣告購買',color:'#2563eb',data:tDates.map(k=>byDate[k].adBuy||0)},  ga4:{label:'GA4購買', color:'#059669',data:tDates.map(k=>byDate[k].ga4Buy||0)},  fmt:v=>Math.round(v).toLocaleString() },
+    rev:  { label:'營收', ad:{label:'廣告營收',color:'#7c3aed',data:tDates.map(k=>byDate[k].adRev||0)},  ga4:{label:'GA4營收', color:'#0d9488',data:tDates.map(k=>byDate[k].ga4Rev||0)},  fmt:v=>'NT$'+Math.round(v).toLocaleString() },
+    roas: { label:'ROAS', ad:{label:'廣告ROAS',color:'#ea580c',data:tDates.map(k=>byDate[k].spend>0?(byDate[k].adRev/byDate[k].spend):0)}, ga4:{label:'GA4ROAS',color:'#0891b2',data:tDates.map(k=>byDate[k].spend>0?(byDate[k].ga4Rev/byDate[k].spend):0)}, fmt:v=>v.toFixed(2)+'x' },
+    spend:{ label:'花費', ad:{label:'花費',color:'#dc2626',data:tDates.map(k=>byDate[k].spend||0)},       ga4:null, fmt:v=>'NT$'+Math.round(v).toLocaleString() },
   };
 
+  const btnStyle = (active) => `padding:5px 14px;border-radius:20px;border:1px solid ${active?'#dc2626':'#d1d5db'};cursor:pointer;font-size:12px;background:${active?'#dc2626':'#fff'};color:${active?'#fff':'#374151'}`;
+
   el.innerHTML = `
-  <div style="padding:20px">
-    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:auto;margin-bottom:24px">
-      <table style="width:100%;border-collapse:collapse;min-width:900px">
+  <div style="padding:20px;max-width:1400px">
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow-x:auto;margin-bottom:24px">
+      <table style="width:100%;border-collapse:collapse;min-width:1100px">
         <thead>
-          <tr>
-            <th style="${colHL}" rowspan="2">渠道</th>
-            <th style="${colH};border-left:2px solid #e5e7eb" rowspan="2">花費</th>
-            <th style="width:1px;background:#f0f0f0"></th>
-            <th style="${colH};background:#eff6ff;border-left:2px solid #dbeafe" colspan="4">廣告口徑</th>
-            <th style="width:1px;background:#f0f0f0"></th>
-            <th style="${colH};background:#f0fdf4;border-left:2px solid #bbf7d0" colspan="5">GA4 口徑</th>
+          <tr style="border-bottom:1px solid #e5e7eb">
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600" rowspan="2">渠道</th>
+            ${th('花費')} ${sep}
+            <th colspan="5" style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border-left:2px solid #dbeafe">廣告口徑</th>
+            ${sep}
+            <th colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#059669;background:#f0fdf4;border-left:2px solid #bbf7d0">GA4 口徑</th>
           </tr>
-          <tr>
-            <th style="width:1px;background:#f0f0f0"></th>
-            <th style="${colH};background:#eff6ff">購買</th>
-            <th style="${colH};background:#eff6ff">營收</th>
-            <th style="${colH};background:#eff6ff">ROAS</th>
-            <th style="${colH};background:#eff6ff">CPA</th>
-            <th style="width:1px;background:#f0f0f0"></th>
-            <th style="${colH};background:#f0fdf4">購買</th>
-            <th style="${colH};background:#f0fdf4">營收</th>
-            <th style="${colH};background:#f0fdf4">ROAS</th>
-            <th style="${colH};background:#f0fdf4">CPA</th>
-            <th style="${colH};background:#f0fdf4">工作階段</th>
+          <tr style="border-bottom:2px solid #e5e7eb">
+            <th style="padding:8px 12px;font-size:10px;color:#6b7280;font-weight:600;text-align:right">同期比</th>
+            ${sep}
+            ${['購買','營收','ROAS','CPA','CPLC'].map(t=>`<th style="padding:8px 12px;text-align:right;font-size:10px;color:#2563eb;font-weight:600;background:#eff6ff">${t}</th>`).join('')}
+            ${sep}
+            ${['購買','營收','ROAS','CPA','CVR','VPT'].map(t=>`<th style="padding:8px 12px;text-align:right;font-size:10px;color:#059669;font-weight:600;background:#f0fdf4">${t}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
-          ${channels.map(ch=>rowHTML(ch)).join('')}
-          <tr><td colspan="14" style="padding:0;border-top:2px solid #e5e7eb"></td></tr>
-          ${rowHTML(tot, true)}
+          ${rowHTML('Meta','🔵',cMeta)}
+          ${rowHTML('Google','🔴',cGoogle)}
+          ${rowHTML('合計','⬛',cTot,true)}
         </tbody>
       </table>
     </div>
 
     <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <span style="font-weight:600;font-size:14px;margin-right:8px">趨勢指標</span>
-        ${['spend','adBuy','adRev','adRoas','ga4Buy','ga4Rev','ga4Roas'].map((k,i)=>
-          `<button onclick="switchV2Metric('${k}')" id="v2m_${k}" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;cursor:pointer;font-size:12px;background:${i===0?'#dc2626':'#fff'};color:${i===0?'#fff':'#374151'}">${{spend:'花費',adBuy:'廣告購買',adRev:'廣告營收',adRoas:'廣告ROAS',ga4Buy:'GA4購買',ga4Rev:'GA4營收',ga4Roas:'GA4ROAS'}[k]}</button>`
-        ).join('')}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-weight:600;font-size:14px">趨勢對比</span>
+        <span style="color:#9ca3af;font-size:12px">選一個指標，同時看廣告口徑 vs GA4 口徑</span>
+        <div style="display:flex;gap:6px;margin-left:auto">
+          ${Object.entries(trendPairs).map(([k,p],i)=>`<button onclick="switchV2Metric('${k}')" id="v2m_${k}" style="${btnStyle(i===0)}">${p.label}</button>`).join('')}
+        </div>
       </div>
-      <div style="position:relative;height:300px">
-        <canvas id="_v2TrendCanvas"></canvas>
+      <div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px" id="_v2Legend">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#2563eb;display:inline-block;border-radius:2px"></span>廣告口徑</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#059669;display:inline-block;border-radius:2px"></span>GA4 口徑</span>
       </div>
+      <div style="position:relative;height:280px"><canvas id="_v2TrendCanvas"></canvas></div>
     </div>
   </div>`;
 
-  // 趨勢圖資料
-  const metricDefs = {
-    spend:   { label:'花費', color:'#dc2626', data: trendDates.map(k=>(byDate[k].spend||0)) },
-    adBuy:   { label:'廣告購買', color:'#2563eb', data: trendDates.map(k=>(byDate[k].adBuy||0)) },
-    adRev:   { label:'廣告營收', color:'#7c3aed', data: trendDates.map(k=>(byDate[k].adRev||0)) },
-    adRoas:  { label:'廣告ROAS', color:'#ea580c', data: trendDates.map(k=>byDate[k].spend>0?(byDate[k].adRev||0)/byDate[k].spend:0) },
-    ga4Buy:  { label:'GA4購買', color:'#059669', data: trendDates.map(k=>(byDate[k].ga4Buy||0)) },
-    ga4Rev:  { label:'GA4營收', color:'#0d9488', data: trendDates.map(k=>(byDate[k].ga4Rev||0)) },
-    ga4Roas: { label:'GA4 ROAS', color:'#0891b2', data: trendDates.map(k=>byDate[k].spend>0?(byDate[k].ga4Rev||0)/byDate[k].spend:0) },
-  };
-  window._v2TrendData = {labels: trendLabels, defs: metricDefs};
-
   if (_v2TrendChart) { _v2TrendChart.destroy(); _v2TrendChart = null; }
+
+  function buildChart(key) {
+    const p = trendPairs[key];
+    const datasets = [{ type:'bar', label:p.ad.label, data:p.ad.data, backgroundColor:p.ad.color+'33', borderColor:p.ad.color, borderWidth:2, order:2 }];
+    if (p.ga4) datasets.push({ type:'line', label:p.ga4.label, data:p.ga4.data, borderColor:p.ga4.color, backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, order:1 });
+    return datasets;
+  }
+
   _v2TrendChart = new Chart(document.getElementById('_v2TrendCanvas'), {
-    type: 'bar',
-    data: { labels: trendLabels, datasets: [{
-      label: '花費', data: metricDefs.spend.data,
-      backgroundColor: 'rgba(220,38,38,0.15)', borderColor: '#dc2626', borderWidth: 2,
-    }]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: {display:false}, datalabels: {display:false} },
-      scales: { y: { beginAtZero:true, ticks:{ callback: v=>'NT$'+Math.round(v).toLocaleString() } } }
+    data:{ labels:tLabels, datasets:buildChart('buy') },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, datalabels:{display:false} },
+      scales:{ y:{ beginAtZero:true, ticks:{ callback: v=>Math.round(v).toLocaleString() } } }
     }
   });
 
   window.switchV2Metric = function(key) {
-    const def = metricDefs[key];
-    if (!def) return;
-    document.querySelectorAll('[id^="v2m_"]').forEach(b=>{ b.style.background='#fff'; b.style.color='#374151'; });
+    const p = trendPairs[key];
+    if (!p) return;
+    document.querySelectorAll('[id^="v2m_"]').forEach(b=>{ b.style.background='#fff'; b.style.color='#374151'; b.style.borderColor='#d1d5db'; });
     const btn = document.getElementById('v2m_'+key);
-    if (btn) { btn.style.background='#dc2626'; btn.style.color='#fff'; }
-    const isRoas = key.includes('Roas');
-    _v2TrendChart.data.datasets[0] = {
-      label: def.label, data: def.data,
-      backgroundColor: def.color+'26', borderColor: def.color, borderWidth: 2,
-      type: isRoas ? 'line' : 'bar', fill: isRoas,
-    };
-    _v2TrendChart.options.scales.y.ticks.callback = isRoas
-      ? v => v.toFixed(2)+'x'
-      : v => (key.includes('Rev')||key==='spend') ? 'NT$'+Math.round(v).toLocaleString() : Math.round(v).toLocaleString();
+    if (btn) { btn.style.background='#dc2626'; btn.style.color='#fff'; btn.style.borderColor='#dc2626'; }
+    const leg = document.getElementById('_v2Legend');
+    if (leg) leg.style.display = p.ga4 ? 'flex' : 'none';
+    _v2TrendChart.data.datasets = buildChart(key);
+    _v2TrendChart.options.scales.y.ticks.callback = v => p.fmt(v);
     _v2TrendChart.update();
   };
 }
