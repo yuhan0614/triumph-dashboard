@@ -2502,9 +2502,9 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
       datalabels:{
         display: ctx => {
           const tot = ctx.chart.data.datasets.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
-          return tot>0 && (ctx.raw||0)/tot > 0.06;
+          return tot>0 && (ctx.raw||0)/tot > 0.04;
         },
-        formatter:(val,ctx)=>{ const tot=ctx.chart.data.datasets.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0); return tot>0?(val/tot*100).toFixed(0)+'%':''; },
+        formatter:(val,ctx)=>{ const tot=ctx.chart.data.datasets.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0); return tot>0?(val/tot*100).toFixed(1)+'%':''; },
         color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
       },
     },
