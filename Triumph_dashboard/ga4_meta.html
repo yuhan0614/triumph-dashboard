@@ -1630,7 +1630,8 @@ async function renderOverallV2(s, e) {
     spend: a.spend+(r.spend||0), purchase: a.purchase+(r.purchase||0),
     purchase_value: a.purchase_value+(r.purchase_value||0),
     link_clicks: a.link_clicks+(r.link_clicks||0),
-  }), {spend:0,purchase:0,purchase_value:0,link_clicks:0});
+    impressions: a.impressions+(r.impressions||0),
+  }), {spend:0,purchase:0,purchase_value:0,link_clicks:0,impressions:0});
 
   const gadsRows = gadsAll.filter(r=>r.date>=s&&r.date<=e);
   const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+r.clicks}),{cost:0,purchase:0,revenue:0,clicks:0});
@@ -1729,41 +1730,113 @@ async function renderOverallV2(s, e) {
 
   // 趨勢資料
   const byDate = {};
+  const zero = () => ({spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0,meta:0,google:0,metaRev:0,googleRev:0,ga4Meta:0,ga4Google:0});
   metaTrend.forEach(r=>{
     const k = groupKey((r.date_start||'').replace(/-/g,''));
-    if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
+    if(!byDate[k]) byDate[k]=zero();
     byDate[k].spend+=r.spend||0; byDate[k].adBuy+=r.purchase||0; byDate[k].adRev+=r.purchase_value||0;
+    byDate[k].meta+=r.spend||0; byDate[k].metaRev+=r.purchase_value||0;
   });
   gadsRows.forEach(r=>{
     const k = groupKey(r.date.replace(/-/g,''));
-    if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
+    if(!byDate[k]) byDate[k]=zero();
     byDate[k].spend+=r.cost||0; byDate[k].adBuy+=r.purchase||0; byDate[k].adRev+=r.revenue||0;
+    byDate[k].google+=r.cost||0; byDate[k].googleRev+=r.revenue||0;
   });
   ga4Rows.forEach(r=>{
     const k = groupKey(r.date.replace(/-/g,''));
-    if(!byDate[k]) byDate[k]={spend:0,adBuy:0,adRev:0,ga4Buy:0,ga4Rev:0};
+    if(!byDate[k]) byDate[k]=zero();
     byDate[k].ga4Buy+=r.purchases||0; byDate[k].ga4Rev+=r.revenue||0;
+    if(r.channel==='Meta') byDate[k].ga4Meta+=r.revenue||0;
+    else if(r.channel==='Google') byDate[k].ga4Google+=r.revenue||0;
   });
   const tDates = Object.keys(byDate).sort();
   const tLabels = tDates.map(k=>groupLabel(k));
 
-  const spendArr   = tDates.map(k => byDate[k].spend||0);
-  const adRoasArr  = tDates.map(k => byDate[k].spend>0 ? byDate[k].adRev/byDate[k].spend : 0);
-  const ga4RoasArr = tDates.map(k => byDate[k].spend>0 ? byDate[k].ga4Rev/byDate[k].spend : 0);
-  const adBuyArr   = tDates.map(k => byDate[k].adBuy||0);
-  const ga4BuyArr  = tDates.map(k => byDate[k].ga4Buy||0);
+  // 所有指標計算
+  const totSpend = cTot.spend;
+  const fmtRaw = v => Math.round(v||0).toLocaleString('zh-TW');
+  const fmtN   = v => Math.round(v||0).toLocaleString('zh-TW');
 
-  const legendDot = (color, label) => `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#374151"><span style="width:28px;height:3px;background:${color};border-radius:2px;display:inline-block"></span>${label}</span>`;
-  const chartCard = (title, canvasId, legends) => `
-    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;flex:1;min-width:0">
-      <div style="font-weight:600;font-size:14px;margin-bottom:10px">${title}</div>
-      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">${legends}</div>
-      <div style="position:relative;height:250px"><canvas id="${canvasId}"></canvas></div>
-    </div>`;
+  const metaCtr   = metaTot.impressions>0 ? metaTot.link_clicks/metaTot.impressions*100 : 0;
+  const metaRoasV = metaTot.spend>0 ? metaTot.purchase_value/metaTot.spend : 0;
+  const metaCpaV  = metaTot.purchase>0 ? metaTot.spend/metaTot.purchase : 0;
+  const metaCplcV = metaTot.link_clicks>0 ? metaTot.spend/metaTot.link_clicks : 0;
+  const metaCvrV  = metaTot.link_clicks>0 ? metaTot.purchase/metaTot.link_clicks*100 : 0;
+  const ga4MetaRoasV = metaTot.spend>0 ? ga4M.revenue/metaTot.spend : 0;
+  const ga4MetaCpaV  = ga4M.purchases>0 ? metaTot.spend/ga4M.purchases : 0;
+  const ga4MetaCvrV  = ga4M.sessions>0  ? ga4M.purchases/ga4M.sessions*100 : 0;
+  const ga4MetaVptV  = ga4M.purchases>0 ? ga4M.revenue/ga4M.purchases : 0;
 
-  el.innerHTML = `
-  <div style="padding:20px;max-width:1400px">
-    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow-x:auto;margin-bottom:24px">
+  const gCtr      = gadsTot.clicks>0 && gadsTot.cost>0 ? gadsTot.clicks/(gadsTot.imp||gadsTot.clicks)*100 : 0;
+  const gRoasV    = gadsTot.cost>0 ? gadsTot.revenue/gadsTot.cost : 0;
+  const gCpaV     = gadsTot.purchase>0 ? gadsTot.cost/gadsTot.purchase : 0;
+  const gCplcV    = gadsTot.clicks>0 ? gadsTot.cost/gadsTot.clicks : 0;
+  const gCvrV     = gadsTot.clicks>0 ? gadsTot.purchase/gadsTot.clicks*100 : 0;
+  const ga4GRoasV = gadsTot.cost>0 ? ga4G.revenue/gadsTot.cost : 0;
+  const ga4GCpaV  = ga4G.purchases>0 ? gadsTot.cost/ga4G.purchases : 0;
+  const ga4GCvrV  = ga4G.sessions>0  ? ga4G.purchases/ga4G.sessions*100 : 0;
+  const ga4GVptV  = ga4G.purchases>0 ? ga4G.revenue/ga4G.purchases : 0;
+
+  const totAdBuy2 = metaTot.purchase+gadsTot.purchase;
+  const totAdRev2 = metaTot.purchase_value+gadsTot.revenue;
+  const totImp    = metaTot.impressions+(gadsTot.imp||0);
+  const totClicks2= metaTot.link_clicks+gadsTot.clicks;
+  const totCtr    = totImp>0 ? totClicks2/totImp*100 : 0;
+  const totCplc   = totClicks2>0 ? totSpend/totClicks2 : 0;
+  const totCvr    = totClicks2>0 ? totAdBuy2/totClicks2*100 : 0;
+  const totRoasV  = totSpend>0 ? totAdRev2/totSpend : 0;
+  const totCpaV   = totAdBuy2>0 ? totSpend/totAdBuy2 : 0;
+  const totG4Buy2 = ga4M.purchases+ga4G.purchases;
+  const totG4Rev2 = ga4M.revenue+ga4G.revenue;
+  const totG4Sess2= ga4M.sessions+ga4G.sessions;
+  const totG4RoasV= totSpend>0 ? totG4Rev2/totSpend : 0;
+  const totG4CpaV = totG4Buy2>0 ? totSpend/totG4Buy2 : 0;
+  const totG4CvrV = totG4Sess2>0 ? totG4Buy2/totG4Sess2*100 : 0;
+  const totG4VptV = totG4Buy2>0 ? totG4Rev2/totG4Buy2 : 0;
+
+  // 趨勢陣列
+  const metaArr    = tDates.map(k=>byDate[k].meta||0);
+  const googleArr  = tDates.map(k=>byDate[k].google||0);
+  const adRoasArr  = tDates.map(k=>{ const sp=byDate[k].spend; return sp>0?byDate[k].adRev/sp:0; });
+  const ga4RoasArr = tDates.map(k=>{ const sp=byDate[k].spend; return sp>0?byDate[k].ga4Rev/sp:0; });
+  const ga4MetaArr  = tDates.map(k=>byDate[k].ga4Meta||0);
+  const ga4GoogleArr= tDates.map(k=>byDate[k].ga4Google||0);
+  const adBuyArr   = tDates.map(k=>byDate[k].adBuy||0);
+  const ga4BuyArr  = tDates.map(k=>byDate[k].ga4Buy||0);
+
+  // 媒體比較 table rows
+  const mediaTableRows = [
+    {name:'Meta',   color:'#4285f4', spend:metaTot.spend, imp:metaTot.impressions, clicks:metaTot.link_clicks, ctr:metaCtr, cplc:metaCplcV, buy:metaTot.purchase, cvr:metaCvrV, rev:metaTot.purchase_value, roas:metaRoasV, cpa:metaCpaV, g4buy:ga4M.purchases, g4cvr:ga4MetaCvrV, g4rev:ga4M.revenue, g4roas:ga4MetaRoasV, g4cpa:ga4MetaCpaV, g4vpt:ga4MetaVptV},
+    {name:'Google', color:'#34a853', spend:gadsTot.cost,  imp:gadsTot.imp||0,      clicks:gadsTot.clicks,      ctr:gCtr,    cplc:gCplcV,    buy:gadsTot.purchase, cvr:gCvrV,    rev:gadsTot.revenue,        roas:gRoasV,    cpa:gCpaV,    g4buy:ga4G.purchases, g4cvr:ga4GCvrV,  g4rev:ga4G.revenue, g4roas:ga4GRoasV, g4cpa:ga4GCpaV, g4vpt:ga4GVptV},
+    {name:'合計',   color:'#555',    spend:totSpend,       imp:totImp,               clicks:totClicks2,          ctr:totCtr,  cplc:totCplc,   buy:totAdBuy2,        cvr:totCvr,   rev:totAdRev2,              roas:totRoasV,  cpa:totCpaV,  g4buy:totG4Buy2,      g4cvr:totG4CvrV, g4rev:totG4Rev2,    g4roas:totG4RoasV,g4cpa:totG4CpaV,g4vpt:totG4VptV},
+  ];
+  const mediaTableHTML = mediaTableRows.map((r,i) => `
+    <tr style="${i===2?'font-weight:700;border-top:2px solid #e5e7eb;background:#f8fafc':'font-weight:600'}">
+      <td style="padding:10px 12px;white-space:nowrap"><span style="color:${r.color}">${r.name}</span></td>
+      <td style="padding:10px 12px;text-align:right;white-space:nowrap">NT$${fmtRaw(r.spend)}</td>
+      <td style="padding:10px 12px;text-align:right">${i===2?'100%':(totSpend>0?(r.spend/totSpend*100).toFixed(1)+'%':'-')}</td>
+      <td style="padding:10px 12px;text-align:right">${fmtN(r.imp)}</td>
+      <td style="padding:10px 12px;text-align:right">${fmtN(r.clicks)}</td>
+      <td style="padding:10px 12px;text-align:right">${r.ctr.toFixed(2)}%</td>
+      <td style="padding:10px 12px;text-align:right">${r.cplc>0?'NT$'+fmtRaw(r.cplc):'-'}</td>
+      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${fmtN(r.buy)}</td>
+      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.cvr>0?r.cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:10px 12px;text-align:right;background:#eff6ff">NT$${fmtRaw(r.rev)}</td>
+      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.roas.toFixed(2)}x</td>
+      <td style="padding:10px 12px;text-align:right;background:#eff6ff">${r.buy>0?'NT$'+fmtRaw(r.cpa):'-'}</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4;border-left:2px solid #bbf7d0">${fmtN(r.g4buy)}</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4cvr>0?r.g4cvr.toFixed(2)+'%':'-'}</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">NT$${fmtRaw(r.g4rev)}</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4roas.toFixed(2)}x</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4buy>0?'NT$'+fmtRaw(r.g4cpa):'-'}</td>
+      <td style="padding:10px 12px;text-align:right;background:#f0fdf4">${r.g4vpt>0?'NT$'+fmtRaw(r.g4vpt):'-'}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `<div style="padding:20px;max-width:1400px">
+
+    <!-- ① KPI 匯總 + 同期比 -->
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow-x:auto;margin-bottom:20px">
       <table style="width:100%;border-collapse:collapse;min-width:1100px">
         <thead>
           <tr style="border-bottom:1px solid #e5e7eb">
@@ -1789,46 +1862,154 @@ async function renderOverallV2(s, e) {
       </table>
     </div>
 
-    <div style="display:flex;gap:16px;flex-wrap:wrap">
-      ${chartCard(
-        '花費 × ROAS 趨勢', '_v2Chart1',
-        legendDot('#dc2626','花費（柱）') + legendDot('#ea580c','廣告 ROAS（線）') + legendDot('#059669','GA4 ROAS（線）')
-      )}
-      ${chartCard(
-        '購買趨勢：廣告 vs GA4', '_v2Chart2',
-        legendDot('#2563eb','廣告購買（柱）') + legendDot('#059669','GA4 購買（線）')
-      )}
+    <!-- ② 四張圖 -->
+    <div style="display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:16px;margin-bottom:20px">
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📅 每日花費趨勢（Meta vs Google）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2SpendChart"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;width:220px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">💰 花費佔比（媒體）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2SpendDonut"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">📊 GA4 營收趨勢（Meta vs Google）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevChart"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;width:220px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">✅ GA4 營收佔比（媒體）</div>
+        <div style="position:relative;height:220px"><canvas id="_v2Ga4RevDonut"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ③ 廣告+GA4 趨勢對比 -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px">花費 × ROAS 趨勢</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:10px;background:rgba(220,38,38,.2);border:1.5px solid #dc2626;display:inline-block;border-radius:2px"></span>花費</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2.5px;background:#fbbc04;display:inline-block;border-radius:2px"></span>廣告 ROAS</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2.5px;background:#f5222d;border-top:2.5px dashed #f5222d;display:inline-block"></span>GA4 ROAS</span>
+        </div>
+        <div style="position:relative;height:230px"><canvas id="_v2Chart1"></canvas></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px">購買趨勢：廣告 vs GA4</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:10px;background:rgba(37,99,235,.2);border:1.5px solid #2563eb;display:inline-block;border-radius:2px"></span>廣告購買</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2.5px;background:#059669;display:inline-block;border-radius:2px"></span>GA4 購買</span>
+        </div>
+        <div style="position:relative;height:230px"><canvas id="_v2Chart2"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ④ 媒體比較 table -->
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow-x:auto">
+      <div style="font-weight:600;font-size:14px;padding:16px 16px 0">📊 媒體比較</div>
+      <table style="width:100%;border-collapse:collapse;min-width:1200px;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid #e5e7eb">
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">媒體</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">花費</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">花費佔比</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">曝光</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">點擊</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">CTR</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600">CPLC</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#2563eb;font-weight:600;background:#eff6ff">廣告購買</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#2563eb;font-weight:600;background:#eff6ff">廣告CVR</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#2563eb;font-weight:600;background:#eff6ff">廣告營收</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#2563eb;font-weight:600;background:#eff6ff">廣告ROAS</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#2563eb;font-weight:600;background:#eff6ff">廣告CPA</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4;border-left:2px solid #bbf7d0">GA4購買</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4">GA4 CVR</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4">GA4營收</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4">GA4 ROAS</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4">GA4 CPA</th>
+            <th style="padding:10px 12px;text-align:right;font-size:11px;color:#059669;font-weight:600;background:#f0fdf4">VPT</th>
+          </tr>
+        </thead>
+        <tbody>${mediaTableHTML}</tbody>
+      </table>
     </div>
   </div>`;
 
   if (_v2TrendChart) { _v2TrendChart.destroy(); _v2TrendChart = null; }
 
-  const commonOpts = (y1Fmt, y2Fmt) => ({
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend:{display:false}, datalabels:{display:false} },
-    scales: {
-      y:  { beginAtZero:true, position:'left',  ticks:{ callback: y1Fmt }, grid:{color:'#f3f4f6'} },
-      y2: { beginAtZero:true, position:'right', ticks:{ callback: y2Fmt }, grid:{drawOnChartArea:false} },
+  const stackedOpts = (hasY2) => ({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{position:'top',labels:{boxWidth:12,font:{size:10}}}, datalabels:{
+      display: ctx => { if(ctx.dataset.type==='line') return false; const ds=ctx.chart.data.datasets; const tot=ds.filter(d=>d.type==='bar'||!d.type).reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0); return tot>0&&ctx.raw/tot>0.08; },
+      formatter:(val,ctx)=>{ const ds=ctx.chart.data.datasets; const tot=ds.filter(d=>d.type==='bar'||!d.type).reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0); return tot>0?(val/tot*100).toFixed(0)+'%':''; },
+      color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
+    }},
+    scales:{
+      x:{stacked:true, grid:{display:false}, ticks:{font:{size:10},maxTicksLimit:14}},
+      y:{beginAtZero:true, stacked:true, position:'left', grid:{color:'#f0f2f5'}, ticks:{callback:v=>'NT$'+Math.round(v).toLocaleString(),font:{size:10}}},
+      ...(hasY2?{y2:{beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>v.toFixed(1)+'x',font:{size:10}}}}:{}),
     }
   });
 
-  // 圖一：花費柱 + 廣告ROAS線 + GA4ROAS線
-  _v2TrendChart = new Chart(document.getElementById('_v2Chart1'), {
-    data: { labels: tLabels, datasets: [
-      { type:'bar',  label:'花費',     data:spendArr,   backgroundColor:'rgba(220,38,38,0.15)', borderColor:'#dc2626', borderWidth:1.5, yAxisID:'y',  order:3 },
-      { type:'line', label:'廣告ROAS', data:adRoasArr,  borderColor:'#ea580c', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:1 },
-      { type:'line', label:'GA4ROAS',  data:ga4RoasArr, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:2, borderDash:[5,3] },
+  new Chart(document.getElementById('_v2SpendChart'), {
+    type:'bar', plugins:[ChartDataLabels],
+    data:{labels:tLabels, datasets:[
+      {label:'Meta 花費',   data:metaArr,   backgroundColor:'rgba(66,133,244,0.6)', stack:'s', yAxisID:'y', order:3},
+      {label:'Google 花費', data:googleArr, backgroundColor:'rgba(52,168,83,0.6)',  stack:'s', yAxisID:'y', order:3},
+      {type:'line', label:'廣告ROAS', data:adRoasArr,  borderColor:'#fbbc04', backgroundColor:'transparent', yAxisID:'y2', tension:0.3, pointRadius:3, borderWidth:2, order:1},
+      {type:'line', label:'GA4 ROAS', data:ga4RoasArr, borderColor:'#f5222d', backgroundColor:'transparent', yAxisID:'y2', tension:0.3, pointRadius:3, borderWidth:2, borderDash:[4,3], order:0},
     ]},
-    options: commonOpts(v=>'NT$'+Math.round(v).toLocaleString(), v=>v.toFixed(1)+'x'),
+    options:stackedOpts(true),
   });
 
-  // 圖二：廣告購買柱 + GA4購買線
-  new Chart(document.getElementById('_v2Chart2'), {
-    data: { labels: tLabels, datasets: [
-      { type:'bar',  label:'廣告購買', data:adBuyArr,  backgroundColor:'rgba(37,99,235,0.15)', borderColor:'#2563eb', borderWidth:1.5, yAxisID:'y',  order:2 },
-      { type:'line', label:'GA4購買',  data:ga4BuyArr, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y', order:1 },
+  new Chart(document.getElementById('_v2SpendDonut'), {
+    type:'doughnut', plugins:[ChartDataLabels],
+    data:{labels:['Meta','Google'], datasets:[{data:[metaTot.spend,gadsTot.cost], backgroundColor:['#4285f4','#34a853'], borderWidth:1}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},
+      datalabels:{color:'#fff',font:{size:11,weight:'bold'},formatter:(val,ctx)=>{ const tot=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0); return tot>0?(val/tot*100).toFixed(1)+'%':''; }, anchor:'center',align:'center'}}},
+  });
+
+  new Chart(document.getElementById('_v2Ga4RevChart'), {
+    type:'bar', plugins:[ChartDataLabels],
+    data:{labels:tLabels, datasets:[
+      {label:'Meta GA4營收',   data:ga4MetaArr,   backgroundColor:'rgba(66,133,244,0.6)', stack:'r', yAxisID:'y'},
+      {label:'Google GA4營收', data:ga4GoogleArr, backgroundColor:'rgba(52,168,83,0.6)',  stack:'r', yAxisID:'y'},
     ]},
-    options: commonOpts(v=>Math.round(v).toLocaleString(), v=>Math.round(v).toLocaleString()),
+    options:stackedOpts(false),
+  });
+
+  new Chart(document.getElementById('_v2Ga4RevDonut'), {
+    type:'doughnut', plugins:[ChartDataLabels],
+    data:{labels:['Meta','Google'], datasets:[{data:[ga4M.revenue,ga4G.revenue], backgroundColor:['#4285f4','#34a853'], borderWidth:1}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},
+      datalabels:{color:'#fff',font:{size:11,weight:'bold'},formatter:(val,ctx)=>{ const tot=ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0); return tot>0?(val/tot*100).toFixed(1)+'%':''; }, anchor:'center',align:'center'}}},
+  });
+
+  _v2TrendChart = new Chart(document.getElementById('_v2Chart1'), {
+    data:{labels:tLabels, datasets:[
+      {type:'bar',  label:'花費',     data:tDates.map(k=>byDate[k].spend||0), backgroundColor:'rgba(220,38,38,0.15)', borderColor:'#dc2626', borderWidth:1.5, yAxisID:'y', order:3},
+      {type:'line', label:'廣告ROAS', data:adRoasArr, borderColor:'#fbbc04', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:1},
+      {type:'line', label:'GA4ROAS',  data:ga4RoasArr,borderColor:'#f5222d', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y2', order:2, borderDash:[5,3]},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, datalabels:{display:false}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:10},maxTicksLimit:14}},
+        y:{beginAtZero:true, position:'left',  ticks:{callback:v=>'NT$'+Math.round(v).toLocaleString(),font:{size:10}}, grid:{color:'#f3f4f6'}},
+        y2:{beginAtZero:true, position:'right', ticks:{callback:v=>v.toFixed(1)+'x',font:{size:10}}, grid:{drawOnChartArea:false}},
+      }},
+  });
+
+  new Chart(document.getElementById('_v2Chart2'), {
+    data:{labels:tLabels, datasets:[
+      {type:'bar',  label:'廣告購買', data:adBuyArr,  backgroundColor:'rgba(37,99,235,0.15)', borderColor:'#2563eb', borderWidth:1.5, yAxisID:'y', order:2},
+      {type:'line', label:'GA4購買',  data:ga4BuyArr, borderColor:'#059669', backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, tension:0.3, yAxisID:'y', order:1},
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, datalabels:{display:false}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:10},maxTicksLimit:14}},
+        y:{beginAtZero:true, ticks:{callback:v=>Math.round(v).toLocaleString(),font:{size:10}}, grid:{color:'#f3f4f6'}},
+      }},
   });
 }
 
