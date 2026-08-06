@@ -2166,7 +2166,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   // --- channels aggregate ---
   const chMap = {};
   (dailyChRes.data||[]).filter(r=>r.date>=sinceD&&r.date<=untilD).forEach(r => {
-    const k = r.defaultChannelGroup||'(other)';
+    const k = r.sessionDefaultChannelGrouping||'(other)';
     if (!chMap[k]) chMap[k] = {k,sessions:0,addToCarts:0,conversions:0,totalRevenue:0,_dur:0,_bRate:0,_n:0};
     const m = chMap[k];
     m.sessions+=parseFloat(r.sessions||0); m.addToCarts+=parseFloat(r.addToCarts||0);
@@ -2192,7 +2192,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   // --- prev period channel/source maps ---
   const prevChMap = {};
   (dailyChRes.data||[]).filter(r=>r.date>=prevSinceD&&r.date<=prevUntilD).forEach(r => {
-    const k = r.defaultChannelGroup||'(other)';
+    const k = r.sessionDefaultChannelGrouping||'(other)';
     if (!prevChMap[k]) prevChMap[k]={sessions:0,conversions:0,totalRevenue:0};
     prevChMap[k].sessions+=parseFloat(r.sessions||0); prevChMap[k].conversions+=parseFloat(r.conversions||0); prevChMap[k].totalRevenue+=parseFloat(r.totalRevenue||0);
   });
@@ -2303,7 +2303,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
     </tr>`;
   };
   const cRow = r => {
-    const p = prevChMap[r.k||r.defaultChannelGroup||'(other)']||{};
+    const p = prevChMap[r.k||r.sessionDefaultChannelGrouping||'(other)']||{};
     const revPct = totalChRev>0?parseFloat(r.totalRevenue||0)/totalChRev*100:0;
     const prevRevPct = prevTotalChRev>0?(p.totalRevenue||0)/prevTotalChRev*100:0;
     return `<tr>
@@ -2415,16 +2415,6 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
       <h3>📅 每日趨勢</h3>
       <div style="position:relative;height:260px"><canvas id="_ga4TrendCanvas"></canvas></div>
     </div>
-    <div class="chart-card" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <h3 style="margin:0">🔀 每日流量來源分佈</h3>
-        <div style="display:flex;gap:4px">
-          <button id="_ga4SrcBtn_rev" onclick="switchGa4SrcMetric('rev')" style="padding:4px 12px;border-radius:20px;border:1px solid #10b981;background:#10b981;color:#fff;font-size:12px;cursor:pointer">營收</button>
-          <button id="_ga4SrcBtn_sess" onclick="switchGa4SrcMetric('sess')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">流量</button>
-        </div>
-      </div>
-      <div style="position:relative;height:260px"><canvas id="_ga4SrcStackCanvas"></canvas></div>
-    </div>
     <div class="table-card" style="margin-bottom:14px">
       <div class="table-header"><h3>📅 每日明細</h3></div>
       ${scrollTbl(daily, dRow, thead)}
@@ -2463,73 +2453,6 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
     }
   });
 
-  // ── 每日流量來源分佈（堆疊） ──
-  const CH_GROUP = ch => {
-    const c = (ch||'').toLowerCase();
-    if (c === 'direct') return 'Direct';
-    if (['paid social', 'paid social-new', 'cross-network', 'paid search'].some(k => c.includes(k))) return '廣告';
-    if (c === 'unassigned') return 'Unassigned';
-    if (c === 'organic search') return 'Organic Search';
-    return '其他';
-  };
-  const SRC_COLORS = { '廣告':'rgba(99,102,241,0.85)', 'Direct':'rgba(156,163,175,0.85)', 'Organic Search':'rgba(245,158,11,0.85)', 'Unassigned':'rgba(209,213,219,0.85)', '其他':'rgba(229,231,235,0.85)' };
-  const SRC_ORDER  = ['廣告','Direct','Organic Search','Unassigned','其他'];
-
-  // 把 daily_channels 資料重組成 {date -> {group -> {rev, sess}}}
-  const srcByDate = {};
-  (dailyChRes.data||[]).forEach(r => {
-    const k = groupKey((r.date||'').replace(/-/g,''));
-    const g = CH_GROUP(r.defaultChannelGroup);
-    if (!srcByDate[k]) srcByDate[k] = {};
-    if (!srcByDate[k][g]) srcByDate[k][g] = {rev:0, sess:0};
-    srcByDate[k][g].rev  += r.totalRevenue||0;
-    srcByDate[k][g].sess += r.sessions||0;
-  });
-  const srcDates  = Object.keys(srcByDate).sort();
-  const srcLabels = srcDates.map(k => groupLabel(k));
-
-  const buildSrcDatasets = metric => SRC_ORDER.map(g => ({
-    label: g,
-    data: srcDates.map(k => (srcByDate[k]||{})[g]?.[metric]||0),
-    backgroundColor: SRC_COLORS[g],
-    stack: 's',
-  }));
-
-  const srcStackOpts = metric => ({
-    responsive:true, maintainAspectRatio:false,
-    plugins:{
-      legend:{position:'top', labels:{font:{size:11}, boxWidth:12, padding:10}},
-      datalabels:{
-        display: ctx => {
-          const tot = ctx.chart.data.datasets.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0);
-          return tot>0 && (ctx.raw||0)/tot > 0.04;
-        },
-        formatter:(val,ctx)=>{ const tot=ctx.chart.data.datasets.reduce((s,d)=>s+(d.data[ctx.dataIndex]||0),0); return tot>0?(val/tot*100).toFixed(1)+'%':''; },
-        color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
-      },
-    },
-    scales:{
-      x:{stacked:true, grid:{display:false}, ticks:{font:{size:10},maxTicksLimit:14}},
-      y:{stacked:true, beginAtZero:true, grid:{color:'#f0f2f5'}, ticks:{font:{size:10}, callback: metric==='rev'?v=>'NT$'+Math.round(v/1000)+'K':v=>v>=1000?(v/1000).toFixed(0)+'K':v}},
-    }
-  });
-
-  let _ga4SrcChart = null;
-  if (window._ga4SrcChartInst) { window._ga4SrcChartInst.destroy(); }
-  window._ga4SrcChartInst = new Chart(document.getElementById('_ga4SrcStackCanvas'), {
-    type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:srcLabels, datasets:buildSrcDatasets('rev') },
-    options:srcStackOpts('rev'),
-  });
-
-  window.switchGa4SrcMetric = function(metric) {
-    const isRev = metric==='rev';
-    document.getElementById('_ga4SrcBtn_rev').style.cssText  = `padding:4px 12px;border-radius:20px;border:1px solid ${isRev?'#10b981':'#d1d5db'};background:${isRev?'#10b981':'#fff'};color:${isRev?'#fff':'#374151'};font-size:12px;cursor:pointer`;
-    document.getElementById('_ga4SrcBtn_sess').style.cssText = `padding:4px 12px;border-radius:20px;border:1px solid ${!isRev?'#6366f1':'#d1d5db'};background:${!isRev?'#6366f1':'#fff'};color:${!isRev?'#fff':'#374151'};font-size:12px;cursor:pointer`;
-    window._ga4SrcChartInst.data.datasets = buildSrcDatasets(metric);
-    window._ga4SrcChartInst.options = srcStackOpts(metric);
-    window._ga4SrcChartInst.update();
-  };
 
   const pieOpts = title => ({
     responsive:true, maintainAspectRatio:false,
