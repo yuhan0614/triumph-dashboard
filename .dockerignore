@@ -1,0 +1,10 @@
+.git
+.gitignore
+.claude
+.DS_Store
+.env
+__pycache__/
+*.pyc
+refresh_ga4_token.py
+cache/*
+!cache/ad_urls_629806431400540.json

@@ -614,7 +614,11 @@ def creative_img():
 
 # ── Keep-alive + 每日預熱 ─────────────────────────────────────
 
-SELF_URL = os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:5002")
+_FLY_APP = os.environ.get("FLY_APP_NAME")
+SELF_URL = (
+    os.environ.get("RENDER_EXTERNAL_URL")
+    or (f"https://{_FLY_APP}.fly.dev" if _FLY_APP else "http://localhost:5002")
+)
 
 def _prewarm():
     today = datetime.now(TZ_TAIPEI)
