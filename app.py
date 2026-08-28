@@ -8,7 +8,6 @@ from meta_api import ACCOUNTS, get_insights, BASE_URL
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension
 from google.oauth2.credentials import Credentials
-from apscheduler.schedulers.background import BackgroundScheduler
 
 load_dotenv()
 app = Flask(__name__, static_folder='Triumph_dashboard', static_url_path='/Triumph_dashboard')
@@ -612,13 +611,7 @@ def creative_img():
                     return send_from_directory(os.path.abspath(folder), f)
     return jsonify({"error": "not found"}), 404
 
-# ── Keep-alive + 每日預熱 ─────────────────────────────────────
-
-_FLY_APP = os.environ.get("FLY_APP_NAME")
-SELF_URL = (
-    os.environ.get("RENDER_EXTERNAL_URL")
-    or (f"https://{_FLY_APP}.fly.dev" if _FLY_APP else "http://localhost:5002")
-)
+# ── 開機預熱 ──────────────────────────────────────────────────
 
 def _prewarm():
     today = datetime.now(TZ_TAIPEI)
@@ -651,16 +644,10 @@ def _prewarm():
         except Exception as e:
             print(f"[prewarm] {since}~{until} error: {e}")
 
-def _keep_alive():
-    try:
-        http_requests.get(f"{SELF_URL}/api/cache_status", timeout=10)
-    except Exception:
-        pass
+def _warmup():
+    threading.Thread(target=_prewarm, daemon=True).start()
 
-scheduler = BackgroundScheduler(timezone="Asia/Taipei")
-scheduler.add_job(_keep_alive, "interval", minutes=14, id="keep_alive")
-scheduler.add_job(_prewarm, "cron", hour=7, minute=0, id="daily_prewarm")
-scheduler.start()
+_warmup()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
