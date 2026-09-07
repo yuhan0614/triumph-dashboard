@@ -360,8 +360,9 @@
             <th onclick="sortT('metaCampTable',10)">ROAS</th>
             <th onclick="sortT('metaCampTable',11)">購買金額</th>
             <th onclick="sortT('metaCampTable',12)">花費佔比</th>
+            <th onclick="sortT('metaCampTable',13)">營收佔比</th>
           </tr></thead>
-          <tbody id="metaCampBody"><tr><td colspan="13" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="metaCampBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -567,8 +568,10 @@
             <th onclick="sortT('gadsCampTable',9)">CPA</th>
             <th onclick="sortT('gadsCampTable',10)">ROAS</th>
             <th onclick="sortT('gadsCampTable',11)">營收</th>
+            <th onclick="sortT('gadsCampTable',12)">花費佔比</th>
+            <th onclick="sortT('gadsCampTable',13)">營收佔比</th>
           </tr></thead>
-          <tbody id="gadsCampBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="gadsCampBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -720,19 +723,21 @@ function getPrevRange(s, e) {
 function fmtN(n){ if(n==null||isNaN(n)) return '<span class="na">—</span>'; return Math.round(n).toLocaleString('zh-TW'); }
 function fmtM(n){ if(n==null||isNaN(n)) return '<span class="na">—</span>'; return 'NT$'+Math.round(n).toLocaleString('zh-TW'); }
 function fmtRaw(n){ return (n||0).toLocaleString('zh-TW',{minimumFractionDigits:0,maximumFractionDigits:0}); }
-function fmtChg(cur, prev) {
+function fmtChg(cur, prev, inv=false) {
   if (!prev) return '';
   const pct = (cur - prev) / prev * 100;
   if (Math.abs(pct) < 0.05) return '';
   const sign = pct >= 0 ? '+' : '';
-  return `<span class="${pct>=0?'chg-up':'chg-dn'}">${sign}${pct.toFixed(1)}%</span>`;
+  const good = inv ? pct < 0 : pct >= 0;
+  return `<span class="${good?'chg-up':'chg-dn'}">${sign}${pct.toFixed(1)}%</span>`;
 }
-function fmtPp(cur, prev) {
+function fmtPp(cur, prev, inv=false) {
   if (!prev && prev !== 0) return '';
   const diff = cur - prev;
   if (Math.abs(diff) < 0.05) return '';
   const sign = diff >= 0 ? '+' : '';
-  return `<span class="${diff>=0?'chg-up':'chg-dn'}">${sign}${diff.toFixed(1)}pp</span>`;
+  const good = inv ? diff < 0 : diff >= 0;
+  return `<span class="${good?'chg-up':'chg-dn'}">${sign}${diff.toFixed(1)}pp</span>`;
 }
 
 // ── tab / refresh ─────────────────────────────────────────────
@@ -798,7 +803,7 @@ async function fetchMeta(s, e) {
 }
 
 async function renderMeta(s, e) {
-  document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="12" class="loading-cell">載入 Meta 資料中…</td></tr>';
+  document.getElementById('metaCampBody').innerHTML = '<tr><td colspan="14" class="loading-cell">載入 Meta 資料中…</td></tr>';
   const { camp, trend, age, prev, adset, campDaily, updated } = await fetchMeta(s, e);
 
   const sumRows = rows => rows.reduce((a, r) => {
@@ -848,6 +853,16 @@ async function renderMeta(s, e) {
     d.add_to_cart+=r.add_to_cart||0; d.purchase+=r.purchase||0; d.purchase_value+=r.purchase_value||0;
   });
 
+  const prevByCamp = {};
+  prev.forEach(r => {
+    const n = r.campaign_name || '—';
+    if (!prevByCamp[n]) prevByCamp[n] = metaAgg([]);
+    const a = prevByCamp[n];
+    a.spend+=r.spend||0; a.impressions+=r.impressions||0; a.link_clicks+=r.link_clicks||0;
+    a.add_to_cart+=r.add_to_cart||0; a.purchase+=r.purchase||0; a.purchase_value+=r.purchase_value||0;
+  });
+  const totalRev = totals.purchase_value;
+
   const sorted = camp.slice().sort((a,b)=>(b.spend||0)-(a.spend||0));
   let campHtml = '';
   sorted.forEach((r, i) => {
@@ -858,7 +873,7 @@ async function renderMeta(s, e) {
         <span id="exp-${safeId}" onclick="toggleMetaCamp('${safeId}')" style="cursor:pointer;margin-right:5px;font-size:11px;color:#aaa">▶</span>
         <span class="cell-name" title="${name}">${name}</span>
       </td>
-      ${metaMetricCells(metaAgg([r]), totalSpend)}
+      ${metaCampCells(metaAgg([r]), prevByCamp[name], totalSpend, totalRev)}
     </tr>`;
     const keys = Object.keys(campDailyMap[name]||{}).sort();
     keys.forEach(k => {
@@ -881,10 +896,11 @@ async function renderMeta(s, e) {
         <td style="font-size:12px">${rs.toFixed(2)}</td>
         <td style="font-size:12px">${fmtM(v.purchase_value)}</td>
         <td style="font-size:12px">-</td>
+        <td style="font-size:12px">-</td>
       </tr>`;
     });
   });
-  document.getElementById('metaCampBody').innerHTML = campHtml || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
+  document.getElementById('metaCampBody').innerHTML = campHtml || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('metaDonut', camp.slice().sort((a,b)=>(b.spend||0)-(a.spend||0)).slice(0,8).map(r=>({name:r.campaign_name||'—', val:r.spend||0})));
 
@@ -937,6 +953,34 @@ function metaMetricCells(v, total) {
     + `<td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>`
     + `<td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>`
     + shareCell(v.spend, total);
+}
+
+function metaCampCells(v, p, spendTotal, revTotal) {
+  const pv = p || {};
+  const ctr  = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
+  const cpc  = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+  const cvr  = v.link_clicks>0 ? v.purchase/v.link_clicks*100 : 0;
+  const cpp  = v.purchase>0 ? v.spend/v.purchase : 0;
+  const rs   = v.spend>0 ? v.purchase_value/v.spend : 0;
+  const pctr = pv.impressions>0 ? pv.link_clicks/pv.impressions*100 : 0;
+  const pcpc = pv.link_clicks>0 ? pv.spend/pv.link_clicks : 0;
+  const pcvr = pv.link_clicks>0 ? pv.purchase/pv.link_clicks*100 : 0;
+  const pcpp = pv.purchase>0 ? pv.spend/pv.purchase : 0;
+  const prs  = pv.spend>0 ? pv.purchase_value/pv.spend : 0;
+  const c = (val, chg) => `<td>${val}${chg?'<br>'+chg:''}</td>`;
+  return c(fmtM(v.spend),          fmtChg(v.spend, pv.spend))
+    + c(fmtN(v.impressions),       fmtChg(v.impressions, pv.impressions))
+    + c(fmtN(v.link_clicks),       fmtChg(v.link_clicks, pv.link_clicks))
+    + c(ctr.toFixed(2)+'%',        fmtPp(ctr, pctr))
+    + c(fmtM(cpc),                 fmtChg(cpc, pcpc, true))
+    + c(fmtN(v.add_to_cart),       fmtChg(v.add_to_cart, pv.add_to_cart))
+    + c(fmtN(v.purchase),          fmtChg(v.purchase, pv.purchase))
+    + c(cvr>0?cvr.toFixed(2)+'%':'<span class="na">—</span>', fmtPp(cvr, pcvr))
+    + c(v.purchase>0?fmtM(cpp):'<span class="na">—</span>',   fmtChg(cpp, pcpp, true))
+    + c(rs.toFixed(2),             fmtChg(rs, prs))
+    + c(fmtM(v.purchase_value),    fmtChg(v.purchase_value, pv.purchase_value))
+    + shareCell(v.spend, spendTotal)
+    + shareCell(v.purchase_value, revTotal);
 }
 
 function fillCampFilters() {
@@ -2512,7 +2556,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
 }
 
 async function renderGads(s, e) {
-  document.getElementById('gadsCampBody').innerHTML = '<tr><td colspan="11" class="loading-cell">載入中…</td></tr>';
+  document.getElementById('gadsCampBody').innerHTML = '<tr><td colspan="14" class="loading-cell">載入中…</td></tr>';
   const all = (await loadGadsData()).filter(r => isEcomm(r.campaign));
   const rows = all.filter(r => r.date>=s && r.date<=e);
 
@@ -2574,20 +2618,39 @@ async function renderGads(s, e) {
     const c = byCamp[r.campaign];
     c.cost+=r.cost;c.imp+=r.imp;c.clicks+=r.clicks;c.atc+=r.atc;c.purchase+=r.purchase;c.revenue+=r.revenue;
   });
+  const prevByCamp = {};
+  all.filter(r => r.date>=ps && r.date<=pe).forEach(r => {
+    if (!prevByCamp[r.campaign]) prevByCamp[r.campaign] = {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0};
+    const q = prevByCamp[r.campaign];
+    q.cost+=r.cost;q.imp+=r.imp;q.clicks+=r.clicks;q.atc+=r.atc;q.purchase+=r.purchase;q.revenue+=r.revenue;
+  });
   const campSorted = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost);
   document.getElementById('gadsCampBody').innerHTML = campSorted.map(([name,v]) => {
+    const q = prevByCamp[name] || {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0};
     const cctr=v.imp>0?v.clicks/v.imp*100:0, ccpc=v.clicks>0?v.cost/v.clicks:0;
     const ccvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const ccpa=v.purchase>0?v.cost/v.purchase:0, croas=v.cost>0?v.revenue/v.cost:0;
+    const qctr=q.imp>0?q.clicks/q.imp*100:0, qcpc=q.clicks>0?q.cost/q.clicks:0;
+    const qcvr=q.clicks>0?q.purchase/q.clicks*100:0;
+    const qcpa=q.purchase>0?q.cost/q.purchase:0, qroas=q.cost>0?q.revenue/q.cost:0;
+    const c=(val,chg)=>`<td>${val}${chg?'<br>'+chg:''}</td>`;
     return `<tr>
       <td><span class="cell-name" title="${name}">${name}</span></td>
-      <td>${fmtM(v.cost)}</td><td>${fmtN(v.imp)}</td><td>${fmtN(v.clicks)}</td>
-      <td>${cctr.toFixed(2)}%</td><td>${fmtM(ccpc)}</td><td>${fmtN(v.atc)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${ccvr>0?ccvr.toFixed(2)+'%':'<span class="na">—</span>'}</td>
-      <td>${v.purchase>0?fmtM(ccpa):'<span class="na">—</span>'}</td>
-      <td>${croas.toFixed(2)}</td><td>${fmtM(v.revenue)}</td>
+      ${c(fmtM(v.cost), fmtChg(v.cost,q.cost))}
+      ${c(fmtN(v.imp), fmtChg(v.imp,q.imp))}
+      ${c(fmtN(v.clicks), fmtChg(v.clicks,q.clicks))}
+      ${c(cctr.toFixed(2)+'%', fmtPp(cctr,qctr))}
+      ${c(fmtM(ccpc), fmtChg(ccpc,qcpc,true))}
+      ${c(fmtN(v.atc), fmtChg(v.atc,q.atc))}
+      ${c(fmtN(v.purchase), fmtChg(v.purchase,q.purchase))}
+      ${c(ccvr>0?ccvr.toFixed(2)+'%':'<span class="na">—</span>', fmtPp(ccvr,qcvr))}
+      ${c(v.purchase>0?fmtM(ccpa):'<span class="na">—</span>', fmtChg(ccpa,qcpa,true))}
+      ${c(croas.toFixed(2), fmtChg(croas,qroas))}
+      ${c(fmtM(v.revenue), fmtChg(v.revenue,q.revenue))}
+      ${shareCell(v.cost, tot.cost)}
+      ${shareCell(v.revenue, tot.revenue)}
     </tr>`;
-  }).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
+  }).join('') || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('gadsDonut', campSorted.slice(0,8).map(([n,v])=>({name:n, val:v.cost})));
 
