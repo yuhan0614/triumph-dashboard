@@ -380,12 +380,13 @@
             <th onclick="sortT('metaBrandTable',5)">CPC</th>
             <th onclick="sortT('metaBrandTable',6)">加車</th>
             <th onclick="sortT('metaBrandTable',7)">購買</th>
-            <th onclick="sortT('metaBrandTable',8)">CPP</th>
-            <th onclick="sortT('metaBrandTable',9)">ROAS</th>
-            <th onclick="sortT('metaBrandTable',10)">購買金額</th>
-            <th onclick="sortT('metaBrandTable',11)">花費佔比</th>
+            <th onclick="sortT('metaBrandTable',8)">CVR</th>
+            <th onclick="sortT('metaBrandTable',9)">CPP</th>
+            <th onclick="sortT('metaBrandTable',10)">ROAS</th>
+            <th onclick="sortT('metaBrandTable',11)">購買金額</th>
+            <th onclick="sortT('metaBrandTable',12)">花費佔比</th>
           </tr></thead>
-          <tbody id="metaBrandBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="metaBrandBody"><tr><td colspan="13" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -413,10 +414,11 @@
             <th onclick="sortT('nuRuTable',5)">CPC</th>
             <th onclick="sortT('nuRuTable',6)">加車</th>
             <th onclick="sortT('nuRuTable',7)">購買</th>
-            <th onclick="sortT('nuRuTable',8)">CPP</th>
-            <th onclick="sortT('nuRuTable',9)">ROAS</th>
-            <th onclick="sortT('nuRuTable',10)">購買金額</th>
-            <th onclick="sortT('nuRuTable',11)">花費佔比</th>
+            <th onclick="sortT('nuRuTable',8)">CVR</th>
+            <th onclick="sortT('nuRuTable',9)">CPP</th>
+            <th onclick="sortT('nuRuTable',10)">ROAS</th>
+            <th onclick="sortT('nuRuTable',11)">購買金額</th>
+            <th onclick="sortT('nuRuTable',12)">花費佔比</th>
           </tr></thead>
           <tbody id="nuRuBody"></tbody>
         </table>
@@ -441,12 +443,13 @@
             <th onclick="sortT('audTriumphTable',5)">CPC</th>
             <th onclick="sortT('audTriumphTable',6)">加車</th>
             <th onclick="sortT('audTriumphTable',7)">購買</th>
-            <th onclick="sortT('audTriumphTable',8)">CPP</th>
-            <th onclick="sortT('audTriumphTable',9)">ROAS</th>
-            <th onclick="sortT('audTriumphTable',10)">購買金額</th>
-            <th onclick="sortT('audTriumphTable',11)">花費佔比</th>
+            <th onclick="sortT('audTriumphTable',8)">CVR</th>
+            <th onclick="sortT('audTriumphTable',9)">CPP</th>
+            <th onclick="sortT('audTriumphTable',10)">ROAS</th>
+            <th onclick="sortT('audTriumphTable',11)">購買金額</th>
+            <th onclick="sortT('audTriumphTable',12)">花費佔比</th>
           </tr></thead>
-          <tbody id="audTriumphBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="audTriumphBody"><tr><td colspan="13" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -469,12 +472,13 @@
             <th onclick="sortT('audSloggiTable',5)">CPC</th>
             <th onclick="sortT('audSloggiTable',6)">加車</th>
             <th onclick="sortT('audSloggiTable',7)">購買</th>
-            <th onclick="sortT('audSloggiTable',8)">CPP</th>
-            <th onclick="sortT('audSloggiTable',9)">ROAS</th>
-            <th onclick="sortT('audSloggiTable',10)">購買金額</th>
-            <th onclick="sortT('audSloggiTable',11)">花費佔比</th>
+            <th onclick="sortT('audSloggiTable',8)">CVR</th>
+            <th onclick="sortT('audSloggiTable',9)">CPP</th>
+            <th onclick="sortT('audSloggiTable',10)">ROAS</th>
+            <th onclick="sortT('audSloggiTable',11)">購買金額</th>
+            <th onclick="sortT('audSloggiTable',12)">花費佔比</th>
           </tr></thead>
-          <tbody id="audSloggiBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="audSloggiBody"><tr><td colspan="13" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1030,7 +1034,7 @@ function renderAud(brand) {
   const total = merged.reduce((s,v)=>s+v.spend,0);
   document.getElementById(bodyId).innerHTML = merged.map(v =>
     `<tr><td><span class="cell-name" title="${v.name}">${v.name||'—'}</span></td>${metaMetricCells(v, total)}</tr>`
-  ).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
+  ).join('') || '<tr><td colspan="13" class="loading-cell">此期間無資料</td></tr>';
 }
 
 // ══════════ Meta 素材 ══════════
