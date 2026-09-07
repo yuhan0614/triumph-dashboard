@@ -579,6 +579,31 @@
         </table>
       </div>
     </div>
+
+    <div class="table-card">
+      <div class="table-header"><h3>🗂️ 分廣告類別</h3></div>
+      <div class="table-wrap">
+        <table id="gadsCatTable">
+          <thead><tr>
+            <th onclick="sortT('gadsCatTable',0)">類別</th>
+            <th onclick="sortT('gadsCatTable',1)">花費</th>
+            <th onclick="sortT('gadsCatTable',2)">曝光</th>
+            <th onclick="sortT('gadsCatTable',3)">點擊</th>
+            <th onclick="sortT('gadsCatTable',4)">CTR</th>
+            <th onclick="sortT('gadsCatTable',5)">CPC</th>
+            <th onclick="sortT('gadsCatTable',6)">加車</th>
+            <th onclick="sortT('gadsCatTable',7)">購買</th>
+            <th onclick="sortT('gadsCatTable',8)">CVR</th>
+            <th onclick="sortT('gadsCatTable',9)">CPA</th>
+            <th onclick="sortT('gadsCatTable',10)">ROAS</th>
+            <th onclick="sortT('gadsCatTable',11)">營收</th>
+            <th onclick="sortT('gadsCatTable',12)">花費佔比</th>
+            <th onclick="sortT('gadsCatTable',13)">營收佔比</th>
+          </tr></thead>
+          <tbody id="gadsCatBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- ══════════ Meta 素材 ══════════ -->
@@ -2629,8 +2654,9 @@ async function renderGads(s, e) {
     q.cost+=r.cost;q.imp+=r.imp;q.clicks+=r.clicks;q.atc+=r.atc;q.purchase+=r.purchase;q.revenue+=r.revenue;
   });
   const campSorted = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost);
-  document.getElementById('gadsCampBody').innerHTML = campSorted.map(([name,v]) => {
-    const q = prevByCamp[name] || {cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0};
+  const emptyG = () => ({cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0});
+  const gadsRow = (name, v, q) => {
+    q = q || emptyG();
     const cctr=v.imp>0?v.clicks/v.imp*100:0, ccpc=v.clicks>0?v.cost/v.clicks:0;
     const ccvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const ccpa=v.purchase>0?v.cost/v.purchase:0, croas=v.cost>0?v.revenue/v.cost:0;
@@ -2654,7 +2680,35 @@ async function renderGads(s, e) {
       ${shareCell(v.cost, tot.cost)}
       ${shareCell(v.revenue, tot.revenue)}
     </tr>`;
-  }).join('') || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
+  };
+
+  document.getElementById('gadsCampBody').innerHTML =
+    campSorted.map(([name,v]) => gadsRow(name, v, prevByCamp[name])).join('')
+    || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
+
+  // 分廣告類別（SEM / PMax / 其他）
+  const gadsCat = n => {
+    const c = (n||'').toLowerCase();
+    if (c.includes('sem')) return 'SEM';
+    if (c.includes('performance max') || c.includes('pmax')) return 'PMax';
+    return '其他';
+  };
+  const aggBy = (src, fn) => {
+    const m = {};
+    src.forEach(r => {
+      const k = fn(r.campaign);
+      if (!m[k]) m[k] = emptyG();
+      const a = m[k];
+      a.cost+=r.cost;a.imp+=r.imp;a.clicks+=r.clicks;a.atc+=r.atc;a.purchase+=r.purchase;a.revenue+=r.revenue;
+    });
+    return m;
+  };
+  const catCur  = aggBy(rows, gadsCat);
+  const catPrev = aggBy(all.filter(r => r.date>=ps && r.date<=pe), gadsCat);
+  const CAT_ORDER = ['SEM','PMax','其他'];
+  document.getElementById('gadsCatBody').innerHTML =
+    CAT_ORDER.filter(k => catCur[k]).map(k => gadsRow(k, catCur[k], catPrev[k])).join('')
+    || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('gadsDonut', campSorted.slice(0,8).map(([n,v])=>({name:n, val:v.cost})));
 
