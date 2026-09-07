@@ -5,6 +5,7 @@ import requests as http_requests
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from meta_api import ACCOUNTS, get_insights, BASE_URL
+from google_ads_api import get_campaign_daily, get_pmax_channels
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension
 from google.oauth2.credentials import Credentials
@@ -359,6 +360,24 @@ def api_ga4_sources():
         return with_cache(ga4_key("sources", since, until), lambda: _fetch_ga4_sources(since, until))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/gads")
+def api_gads():
+    since, until = _ga4_dates(request)
+    report = request.args.get("report", "campaign")
+    fetchers = {
+        "campaign": lambda: get_campaign_daily(since, until),
+        "pmax":     lambda: get_pmax_channels(since, until),
+    }
+    if report not in fetchers:
+        return jsonify({"error": f"unknown report: {report}"}), 400
+    if not os.environ.get("GOOGLE_ADS_REFRESH_TOKEN"):
+        return jsonify({"error": "GOOGLE_ADS_REFRESH_TOKEN not set"}), 500
+    try:
+        return with_cache(f"gads_{report}_{since}_{until}".replace("-", ""), fetchers[report])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/ga4/bundle")
 def api_ga4_bundle():
