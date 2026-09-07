@@ -330,8 +330,9 @@
             <th onclick="sortT('metaDailyTable',5)">CPC</th>
             <th onclick="sortT('metaDailyTable',6)">加車</th>
             <th onclick="sortT('metaDailyTable',7)">購買</th>
-            <th onclick="sortT('metaDailyTable',8)">ROAS</th>
-            <th onclick="sortT('metaDailyTable',9)">購買金額</th>
+            <th onclick="sortT('metaDailyTable',8)">CVR</th>
+            <th onclick="sortT('metaDailyTable',9)">ROAS</th>
+            <th onclick="sortT('metaDailyTable',10)">購買金額</th>
           </tr></thead>
           <tbody id="metaDailyBody"></tbody>
         </table>
@@ -354,12 +355,13 @@
             <th onclick="sortT('metaCampTable',5)">CPC</th>
             <th onclick="sortT('metaCampTable',6)">加車</th>
             <th onclick="sortT('metaCampTable',7)">購買</th>
-            <th onclick="sortT('metaCampTable',8)">CPP</th>
-            <th onclick="sortT('metaCampTable',9)">ROAS</th>
-            <th onclick="sortT('metaCampTable',10)">購買金額</th>
-            <th onclick="sortT('metaCampTable',11)">花費佔比</th>
+            <th onclick="sortT('metaCampTable',8)">CVR</th>
+            <th onclick="sortT('metaCampTable',9)">CPP</th>
+            <th onclick="sortT('metaCampTable',10)">ROAS</th>
+            <th onclick="sortT('metaCampTable',11)">購買金額</th>
+            <th onclick="sortT('metaCampTable',12)">花費佔比</th>
           </tr></thead>
-          <tbody id="metaCampBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="metaCampBody"><tr><td colspan="13" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -538,9 +540,10 @@
             <th onclick="sortT('gadsDailyTable',5)">CPC</th>
             <th onclick="sortT('gadsDailyTable',6)">加車</th>
             <th onclick="sortT('gadsDailyTable',7)">購買</th>
-            <th onclick="sortT('gadsDailyTable',8)">CPA</th>
-            <th onclick="sortT('gadsDailyTable',9)">ROAS</th>
-            <th onclick="sortT('gadsDailyTable',10)">營收</th>
+            <th onclick="sortT('gadsDailyTable',8)">CVR</th>
+            <th onclick="sortT('gadsDailyTable',9)">CPA</th>
+            <th onclick="sortT('gadsDailyTable',10)">ROAS</th>
+            <th onclick="sortT('gadsDailyTable',11)">營收</th>
           </tr></thead>
           <tbody id="gadsDailyBody"></tbody>
         </table>
@@ -560,11 +563,12 @@
             <th onclick="sortT('gadsCampTable',5)">CPC</th>
             <th onclick="sortT('gadsCampTable',6)">加車</th>
             <th onclick="sortT('gadsCampTable',7)">購買</th>
-            <th onclick="sortT('gadsCampTable',8)">CPA</th>
-            <th onclick="sortT('gadsCampTable',9)">ROAS</th>
-            <th onclick="sortT('gadsCampTable',10)">營收</th>
+            <th onclick="sortT('gadsCampTable',8)">CVR</th>
+            <th onclick="sortT('gadsCampTable',9)">CPA</th>
+            <th onclick="sortT('gadsCampTable',10)">ROAS</th>
+            <th onclick="sortT('gadsCampTable',11)">營收</th>
           </tr></thead>
-          <tbody id="gadsCampBody"><tr><td colspan="11" class="loading-cell">載入中…</td></tr></tbody>
+          <tbody id="gadsCampBody"><tr><td colspan="12" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -780,15 +784,17 @@ async function fetchMeta(s, e) {
   const since = toApiDate(s), until = toApiDate(e);
   const [ps, pe] = getPrevRange(s, e);
   const base = window.location.origin;
-  const [campRes, trendRes, ageRes, prevRes, adsetRes, campDailyRes] = await Promise.all([
+  const [campRes, ageRes, prevRes, adsetRes, campDailyRes] = await Promise.all([
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days`).then(r=>r.json()),
-    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=1`).then(r=>r.json()),
-    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=account&time_increment=all_days&breakdowns=age`).then(r=>r.json()),
-    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=account&time_increment=all_days`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=all_days&breakdowns=age`).then(r=>r.json()),
+    fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=campaign&time_increment=all_days`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=adset&time_increment=all_days`).then(r=>r.json()),
     fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${since}&until=${until}&level=campaign&time_increment=1`).then(r=>r.json()),
   ]);
-  return { camp: campRes.data||[], trend: trendRes.data||[], age: ageRes.data||[], prev: prevRes.data||[], adset: adsetRes.data||[], campDaily: campDailyRes.data||[], updated: campRes.updated };
+  const campDaily = ecommOnly(campDailyRes.data);
+  return { camp: ecommOnly(campRes.data), trend: campDaily, age: ecommOnly(ageRes.data),
+           prev: ecommOnly(prevRes.data), adset: ecommOnly(adsetRes.data), campDaily,
+           updated: campRes.updated };
 }
 
 async function renderMeta(s, e) {
@@ -859,6 +865,7 @@ async function renderMeta(s, e) {
       const v = campDailyMap[name][k];
       const ctr  = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
       const cpc  = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+      const dcvr = v.link_clicks>0 ? v.purchase/v.link_clicks*100 : 0;
       const rs   = v.spend>0 ? v.purchase_value/v.spend : 0;
       campHtml += `<tr class="detail-row detail-${safeId}" style="display:none;background:#fafbfc">
         <td style="padding-left:26px;color:#888;font-size:12px">${groupLabel(k)}</td>
@@ -869,6 +876,7 @@ async function renderMeta(s, e) {
         <td style="font-size:12px">${fmtM(cpc)}</td>
         <td style="font-size:12px">${fmtN(v.add_to_cart)}</td>
         <td style="font-size:12px">${fmtN(v.purchase)}</td>
+        <td style="font-size:12px">${dcvr>0?dcvr.toFixed(2)+'%':'—'}</td>
         <td style="font-size:12px">${v.purchase>0?fmtM(v.spend/v.purchase):'—'}</td>
         <td style="font-size:12px">${rs.toFixed(2)}</td>
         <td style="font-size:12px">${fmtM(v.purchase_value)}</td>
@@ -892,6 +900,8 @@ async function renderMeta(s, e) {
 }
 
 // ── Meta 表格共用 helper ───────────────────────────────────────
+const isEcomm = n => (n||'').toLowerCase().includes('ecomm');
+const ecommOnly = rows => (rows||[]).filter(r => isEcomm(r.campaign_name));
 const isSloggi = n => (n||'').toLowerCase().includes('sloggi');
 const stripCol = name => (name||'').replace(/_Column.*/i, '').trim();
 
@@ -919,10 +929,12 @@ function shareCell(spend, total) {
 function metaMetricCells(v, total) {
   const ctr = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
   const cpc = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+  const cvr = v.link_clicks>0 ? v.purchase/v.link_clicks*100 : 0;
   const rs  = v.spend>0 ? v.purchase_value/v.spend : 0;
   return `<td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>`
     + `<td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>`
-    + `<td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>`
+    + `<td>${fmtN(v.purchase)}</td><td>${cvr>0?cvr.toFixed(2)+'%':'<span class="na">—</span>'}</td>`
+    + `<td>${v.purchase>0?fmtM(v.spend/v.purchase):'<span class="na">—</span>'}</td>`
     + `<td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>`
     + shareCell(v.spend, total);
 }
@@ -1078,14 +1090,16 @@ function renderMetaDaily(trendRows) {
     const v = byDate[k];
     const ctr = v.impressions>0 ? v.link_clicks/v.impressions*100 : 0;
     const cpc = v.link_clicks>0 ? v.spend/v.link_clicks : 0;
+    const cvr = v.link_clicks>0 ? v.purchase/v.link_clicks*100 : 0;
     const rs  = v.spend>0 ? v.purchase_value/v.spend : 0;
     return `<tr>
       <td><span class="cell-name">${groupLabel(k)}</span></td>
       <td>${fmtM(v.spend)}</td><td>${fmtN(v.impressions)}</td><td>${fmtN(v.link_clicks)}</td>
       <td>${ctr.toFixed(2)}%</td><td>${fmtM(cpc)}</td><td>${fmtN(v.add_to_cart)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>
+      <td>${fmtN(v.purchase)}</td><td>${cvr>0?cvr.toFixed(2)+'%':'<span class="na">—</span>'}</td>
+      <td>${rs.toFixed(2)}</td><td>${fmtM(v.purchase_value)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" class="loading-cell">此期間無資料</td></tr>';
+  }).join('') || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
 }
 
 function renderAge(ageRows) {
@@ -1161,14 +1175,14 @@ async function renderOverall(s, e) {
   const se = toApiDate(s), ee = toApiDate(e);
 
   const [trendRes, ga4Res, gadsAll] = await Promise.all([
-    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=1`).then(r=>r.json()),
     fetch(`/api/ga4/sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
     loadGadsData(),
   ]);
-  const metaTrend = trendRes.data || [];
+  const metaTrend = ecommOnly(trendRes.data);
   const metaTot = metaTrend.reduce((a,r)=>{ a.spend+=(r.spend||0); a.impressions+=(r.impressions||0); a.link_clicks+=(r.link_clicks||0); a.purchase+=(r.purchase||0); a.purchase_value+=(r.purchase_value||0); return a; }, {spend:0,impressions:0,link_clicks:0,purchase:0,purchase_value:0});
 
-  const gadsRows = gadsAll.filter(r => r.date >= s && r.date <= e);
+  const gadsRows = gadsAll.filter(r => isEcomm(r.campaign) && r.date >= s && r.date <= e);
   const gadsTot  = gadsRows.reduce((a,r)=>{ a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; }, {cost:0,imp:0,clicks:0,purchase:0,revenue:0});
 
   // GA4 totals by channel
@@ -1199,11 +1213,14 @@ async function renderOverall(s, e) {
 
   const [ps, pe] = getPrevRange(s, e);
   const [metaPrevRes, ga4PrevRes] = await Promise.all([
-    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=account&time_increment=all_days`).then(r=>r.json()),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(ps)}&until=${toApiDate(pe)}&level=campaign&time_increment=all_days`).then(r=>r.json()),
     fetch(`/api/ga4/sources?since=${toApiDate(ps)}&until=${toApiDate(pe)}`).then(r=>r.json()).catch(()=>({data:[]})),
   ]);
-  const mp = (metaPrevRes.data||[])[0]||{};
-  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>{ a.cost+=r.cost; a.clicks+=r.clicks; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; },{cost:0,clicks:0,purchase:0,revenue:0});
+  const mp = ecommOnly(metaPrevRes.data).reduce((a,r)=>({
+    spend: a.spend+(r.spend||0), purchase: a.purchase+(r.purchase||0),
+    purchase_value: a.purchase_value+(r.purchase_value||0), link_clicks: a.link_clicks+(r.link_clicks||0),
+  }), {spend:0,purchase:0,purchase_value:0,link_clicks:0});
+  const gadsPrev = gadsAll.filter(r=>isEcomm(r.campaign)&&r.date>=ps&&r.date<=pe).reduce((a,r)=>{ a.cost+=r.cost; a.clicks+=r.clicks; a.purchase+=r.purchase; a.revenue+=r.revenue; return a; },{cost:0,clicks:0,purchase:0,revenue:0});
   const pSpend = (mp.spend||0)+gadsPrev.cost, pBuy=(mp.purchase||0)+gadsPrev.purchase, pRev=(mp.purchase_value||0)+gadsPrev.revenue;
   const pClicks = (mp.link_clicks||0)+gadsPrev.clicks;
   const pRoas  = pSpend>0?pRev/pSpend:0, pCpa=pBuy>0?pSpend/pBuy:0;
@@ -1218,7 +1235,10 @@ async function renderOverall(s, e) {
   const scSm  = (cls,lbl,val,sub) => `<div class="sc-sm ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   document.getElementById('overallSpendCards').innerHTML =
     `花費 <span class="spend-val">${fmtM(totSpend)}</span> ${fmtChg(totSpend,pSpend)}`;
-  const totCplc   = (metaTot.link_clicks+gadsTot.clicks)>0 ? totSpend/(metaTot.link_clicks+gadsTot.clicks) : 0;
+  const totClicksAll = metaTot.link_clicks+gadsTot.clicks;
+  const totCplc   = totClicksAll>0 ? totSpend/totClicksAll : 0;
+  const totCvr    = totClicksAll>0 ? totBuy/totClicksAll*100 : 0;
+  const pTotCvr   = pClicks>0 ? pBuy/pClicks*100 : 0;
   const ga4TotCvr = ga4Tot.sessions>0  ? ga4Tot.purchases/ga4Tot.sessions*100 : 0;
   const ga4TotVpt = ga4Tot.purchases>0 ? ga4Tot.revenue/ga4Tot.purchases : 0;
   const kpiEmpty  = `<div class="sc-sm kpi-empty"></div>`;
@@ -1229,7 +1249,8 @@ async function renderOverall(s, e) {
     scSm('', 'ROAS',  totRoas.toFixed(2)+'x',    fmtChg(totRoas,pRoas)),
     scSm('', 'CPA',   totBuy>0?fmtM(totCpa):'—', fmtChg(totCpa,pCpa)),
     scSm('', 'CPLC',  totCplc>0?fmtM(totCplc):'—', fmtChg(totCplc,pCplc)),
-    kpiEmpty, kpiEmpty,
+    scSm('', 'CVR',   totCvr>0?totCvr.toFixed(2)+'%':'—', fmtPp(totCvr,pTotCvr)),
+    kpiEmpty,
   ].join('');
   document.getElementById('overallGa4Cards').innerHTML = [
     scSm('', '購買',    fmtN(ga4Tot.purchases),              fmtChg(ga4Tot.purchases,ga4PrevTot.purchases)),
@@ -1248,6 +1269,7 @@ async function renderOverall(s, e) {
   const pMetaRoas = pMetaSpend>0 ? pMetaRev/pMetaSpend : 0;
   const pMetaCpa  = pMetaBuy>0  ? pMetaSpend/pMetaBuy : 0;
   const pMetaCplc = pMetaClicks>0 ? pMetaSpend/pMetaClicks : 0;
+  const pMetaCvr  = pMetaClicks>0 ? pMetaBuy/pMetaClicks*100 : 0;
   const ga4PrevMeta = ga4PrevRows.filter(r=>r.channel==='Meta').reduce((a,r)=>{ a.sessions+=r.sessions; a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{sessions:0,purchases:0,revenue:0});
   const pMetaG4Roas = pMetaSpend>0 ? ga4PrevMeta.revenue/pMetaSpend : 0;
   const pMetaG4Cpa  = ga4PrevMeta.purchases>0 ? pMetaSpend/ga4PrevMeta.purchases : 0;
@@ -1259,6 +1281,7 @@ async function renderOverall(s, e) {
   const pGoogRoas = pGoogSpend>0 ? pGoogRev/pGoogSpend : 0;
   const pGoogCpa  = pGoogBuy>0  ? pGoogSpend/pGoogBuy : 0;
   const pGoogCplc = pGoogClicks>0 ? pGoogSpend/pGoogClicks : 0;
+  const pGoogCvr  = pGoogClicks>0 ? pGoogBuy/pGoogClicks*100 : 0;
   const ga4PrevGoogle = ga4PrevRows.filter(r=>r.channel==='Google').reduce((a,r)=>{ a.sessions+=r.sessions; a.purchases+=r.purchases; a.revenue+=r.revenue; return a; },{sessions:0,purchases:0,revenue:0});
   const pGoogG4Roas = pGoogSpend>0 ? ga4PrevGoogle.revenue/pGoogSpend : 0;
   const pGoogG4Cpa  = ga4PrevGoogle.purchases>0 ? pGoogSpend/ga4PrevGoogle.purchases : 0;
@@ -1271,6 +1294,7 @@ async function renderOverall(s, e) {
   const metaRoasV = metaSpend>0 ? metaRev/metaSpend : 0;
   const metaCpaV  = metaBuy>0  ? metaSpend/metaBuy : 0;
   const metaCplcV = metaClicks>0 ? metaSpend/metaClicks : 0;
+  const metaCvrV  = metaClicks>0 ? metaBuy/metaClicks*100 : 0;
   const metaG4CvrV= ga4Meta.sessions>0  ? ga4Meta.purchases/ga4Meta.sessions*100 : 0;
   const metaG4VptV= ga4Meta.purchases>0 ? ga4Meta.revenue/ga4Meta.purchases : 0;
   const metaG4RoasV = metaSpend>0 ? ga4Meta.revenue/metaSpend : 0;
@@ -1281,12 +1305,13 @@ async function renderOverall(s, e) {
   const googRoasV = googSpend>0 ? googRev/googSpend : 0;
   const googCpaV  = googBuy>0  ? googSpend/googBuy : 0;
   const googCplcV = googClicks>0 ? googSpend/googClicks : 0;
+  const googCvrV  = googClicks>0 ? googBuy/googClicks*100 : 0;
   const googG4CvrV= ga4Google.sessions>0  ? ga4Google.purchases/ga4Google.sessions*100 : 0;
   const googG4VptV= ga4Google.purchases>0 ? ga4Google.revenue/ga4Google.purchases : 0;
   const googG4RoasV = googSpend>0 ? ga4Google.revenue/googSpend : 0;
   const googG4CpaV  = ga4Google.purchases>0 ? googSpend/ga4Google.purchases : 0;
 
-  function channelCards(spend, pSpendC, buy, pBuy, rev, pRev, roas, pRoas, cpa, pCpa, cplc, pCplc,
+  function channelCards(spend, pSpendC, buy, pBuy, rev, pRev, roas, pRoas, cpa, pCpa, cplc, pCplc, cvr, pCvr,
                         g4buy, pg4buy, g4rev, pg4rev, g4roas, pg4roas, g4cpa, pg4cpa, g4cvr, pg4cvr, g4vpt, pg4vpt) {
     return {
       spend: `花費 <span class="spend-val">${fmtM(spend)}</span> ${fmtChg(spend,pSpendC)}`,
@@ -1296,7 +1321,8 @@ async function renderOverall(s, e) {
         scSm('','ROAS', roas.toFixed(2)+'x',   fmtChg(roas,pRoas)),
         scSm('','CPA',  buy>0?fmtM(cpa):'—',  fmtChg(cpa,pCpa)),
         scSm('','CPLC', cplc>0?fmtM(cplc):'—',fmtChg(cplc,pCplc)),
-        kpiEmpty, kpiEmpty,
+        scSm('','CVR',  cvr>0?cvr.toFixed(2)+'%':'—', fmtPp(cvr,pCvr)),
+        kpiEmpty,
       ].join(''),
       ga4: [
         scSm('','購買',    fmtN(g4buy),                fmtChg(g4buy,pg4buy)),
@@ -1312,7 +1338,7 @@ async function renderOverall(s, e) {
 
   const mCards = channelCards(
     metaSpend, pMetaSpend, metaBuy, pMetaBuy, metaRev, pMetaRev,
-    metaRoasV, pMetaRoas, metaCpaV, pMetaCpa, metaCplcV, pMetaCplc,
+    metaRoasV, pMetaRoas, metaCpaV, pMetaCpa, metaCplcV, pMetaCplc, metaCvrV, pMetaCvr,
     ga4Meta.purchases, ga4PrevMeta.purchases, ga4Meta.revenue, ga4PrevMeta.revenue,
     metaG4RoasV, pMetaG4Roas, metaG4CpaV, pMetaG4Cpa, metaG4CvrV, pMetaG4Cvr, metaG4VptV, pMetaG4Vpt
   );
@@ -1322,7 +1348,7 @@ async function renderOverall(s, e) {
 
   const gCards = channelCards(
     googSpend, pGoogSpend, googBuy, pGoogBuy, googRev, pGoogRev,
-    googRoasV, pGoogRoas, googCpaV, pGoogCpa, googCplcV, pGoogCplc,
+    googRoasV, pGoogRoas, googCpaV, pGoogCpa, googCplcV, pGoogCplc, googCvrV, pGoogCvr,
     ga4Google.purchases, ga4PrevGoogle.purchases, ga4Google.revenue, ga4PrevGoogle.revenue,
     googG4RoasV, pGoogG4Roas, googG4CpaV, pGoogG4Cpa, googG4CvrV, pGoogG4Cvr, googG4VptV, pGoogG4Vpt
   );
@@ -1624,16 +1650,15 @@ async function renderOverallV2(s, e) {
   const [ps, pe] = getPrevRange(s, e);
   const pse = toApiDate(ps), pee = toApiDate(pe);
 
-  const [trendRes, ga4Res, gadsAll, metaPrevRes, ga4PrevRes, metaCampRes] = await Promise.all([
-    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
+  const [trendRes, ga4Res, gadsAll, metaPrevRes, ga4PrevRes] = await Promise.all([
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
     loadGadsData(),
-    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${pse}&until=${pee}&level=account&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
+    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${pse}&until=${pee}&level=campaign&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
   ]);
 
-  const metaTrend = trendRes.data || [];
+  const metaTrend = ecommOnly(trendRes.data);
   const metaTot = metaTrend.reduce((a,r)=>({
     spend: a.spend+(r.spend||0), purchase: a.purchase+(r.purchase||0),
     purchase_value: a.purchase_value+(r.purchase_value||0),
@@ -1641,7 +1666,7 @@ async function renderOverallV2(s, e) {
     impressions: a.impressions+(r.impressions||0),
   }), {spend:0,purchase:0,purchase_value:0,link_clicks:0,impressions:0});
 
-  const gadsRows = gadsAll.filter(r=>r.date>=s&&r.date<=e);
+  const gadsRows = gadsAll.filter(r=>isEcomm(r.campaign)&&r.date>=s&&r.date<=e);
   const gadsTot  = gadsRows.reduce((a,r)=>({cost:a.cost+r.cost,imp:a.imp+r.imp,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+r.clicks}),{cost:0,imp:0,purchase:0,revenue:0,clicks:0});
 
   const ga4Rows = ga4Res.data || [];
@@ -1650,8 +1675,11 @@ async function renderOverallV2(s, e) {
   const ga4M = ga4By['Meta']   || {sessions:0,purchases:0,revenue:0};
   const ga4G = ga4By['Google'] || {sessions:0,purchases:0,revenue:0};
 
-  const mp = (metaPrevRes.data||[])[0]||{};
-  const gadsPrev = gadsAll.filter(r=>r.date>=ps&&r.date<=pe).reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+(r.clicks||0)}),{cost:0,purchase:0,revenue:0,clicks:0});
+  const mp = ecommOnly(metaPrevRes.data).reduce((a,r)=>({
+    spend: a.spend+(r.spend||0), purchase: a.purchase+(r.purchase||0),
+    purchase_value: a.purchase_value+(r.purchase_value||0), link_clicks: a.link_clicks+(r.link_clicks||0),
+  }), {spend:0,purchase:0,purchase_value:0,link_clicks:0});
+  const gadsPrev = gadsAll.filter(r=>isEcomm(r.campaign)&&r.date>=ps&&r.date<=pe).reduce((a,r)=>({cost:a.cost+r.cost,purchase:a.purchase+r.purchase,revenue:a.revenue+r.revenue,clicks:a.clicks+(r.clicks||0)}),{cost:0,purchase:0,revenue:0,clicks:0});
   const ga4PrevBy = {};
   (ga4PrevRes.data||[]).forEach(r=>{ if(!ga4PrevBy[r.channel]) ga4PrevBy[r.channel]={sessions:0,purchases:0,revenue:0}; ga4PrevBy[r.channel].sessions+=r.sessions; ga4PrevBy[r.channel].purchases+=r.purchases; ga4PrevBy[r.channel].revenue+=r.revenue; });
   const ga4PrevM = ga4PrevBy['Meta']   || {sessions:0,purchases:0,revenue:0};
@@ -1663,9 +1691,11 @@ async function renderOverallV2(s, e) {
     const adRoas = spend>0 ? adRev/spend : 0;
     const adCpa  = adBuy>0 ? spend/adBuy : 0;
     const adCplc = clicks>0 ? spend/clicks : 0;
+    const adCvr  = clicks>0 ? adBuy/clicks*100 : 0;
     const prevAdRoas = prevSpend>0 ? prevAdRev/prevSpend : 0;
     const prevAdCpa  = prevAdBuy>0 ? prevSpend/prevAdBuy : 0;
     const prevAdCplc = prevClicks>0 ? prevSpend/prevClicks : 0;
+    const prevAdCvr  = prevClicks>0 ? prevAdBuy/prevClicks*100 : 0;
     const ga4Roas = spend>0 ? g4rev/spend : 0;
     const ga4Cpa  = g4buy>0 ? spend/g4buy : 0;
     const ga4Cvr  = g4sess>0 ? g4buy/g4sess*100 : 0;
@@ -1674,7 +1704,7 @@ async function renderOverallV2(s, e) {
     const prevGa4Cpa  = pg4buy>0 ? prevSpend/pg4buy : 0;
     const prevGa4Cvr  = pg4sess>0 ? pg4buy/pg4sess*100 : 0;
     const prevGa4Vpt  = pg4buy>0 ? pg4rev/pg4buy : 0;
-    return { spend,prevSpend, adBuy,prevAdBuy, adRev,prevAdRev, adRoas,prevAdRoas, adCpa,prevAdCpa, adCplc,prevAdCplc,
+    return { spend,prevSpend, adBuy,prevAdBuy, adRev,prevAdRev, adRoas,prevAdRoas, adCpa,prevAdCpa, adCplc,prevAdCplc, adCvr,prevAdCvr,
              g4sess, g4buy,pg4buy, g4rev,pg4rev, ga4Roas,prevGa4Roas, ga4Cpa,prevGa4Cpa, ga4Cvr,prevGa4Cvr, ga4Vpt,prevGa4Vpt };
   }
   const cMeta = buildCh(metaTot.spend, mp.spend||0, metaTot.purchase, mp.purchase||0,
@@ -1726,6 +1756,7 @@ async function renderOverallV2(s, e) {
       ${td(fr(c.adRoas), chg(c.adRoas,c.prevAdRoas), 'background:#f0f7ff')}
       ${td(c.adCpa>0?fm(c.adCpa):'—', chg(c.adCpa,c.prevAdCpa,true), 'background:#f0f7ff')}
       ${td(c.adCplc>0?fm(c.adCplc):'—', chg(c.adCplc,c.prevAdCplc,true), 'background:#f0f7ff')}
+      ${td(c.adCvr>0?fp(c.adCvr):'—', chg(c.adCvr,c.prevAdCvr,false,true), 'background:#f0f7ff')}
       ${sep}
       ${td(fn(c.g4buy), chg(c.g4buy,c.pg4buy), 'background:#f0fdf4')}
       ${td(fm(c.g4rev), chg(c.g4rev,c.pg4rev), 'background:#f0fdf4')}
@@ -1908,14 +1939,14 @@ async function renderOverallV2(s, e) {
           <tr style="border-bottom:1px solid #e5e7eb">
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600" rowspan="2">渠道</th>
             ${th('花費')} ${sep}
-            <th colspan="5" style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border-left:2px solid #dbeafe">廣告口徑</th>
+            <th colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border-left:2px solid #dbeafe">廣告口徑</th>
             ${sep}
             <th colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#059669;background:#f0fdf4;border-left:2px solid #bbf7d0">GA4 口徑</th>
           </tr>
           <tr style="border-bottom:2px solid #e5e7eb">
             <th style="padding:8px 12px;font-size:10px;color:#6b7280;font-weight:600;text-align:right">同期比</th>
             ${sep}
-            ${['購買','營收','ROAS','CPA','CPLC'].map(t=>`<th style="padding:8px 12px;text-align:right;font-size:10px;color:#2563eb;font-weight:600;background:#eff6ff">${t}</th>`).join('')}
+            ${['購買','營收','ROAS','CPA','CPLC','CVR'].map(t=>`<th style="padding:8px 12px;text-align:right;font-size:10px;color:#2563eb;font-weight:600;background:#eff6ff">${t}</th>`).join('')}
             ${sep}
             ${['購買','營收','ROAS','CPA','CVR','VPT'].map(t=>`<th style="padding:8px 12px;text-align:right;font-size:10px;color:#059669;font-weight:600;background:#f0fdf4">${t}</th>`).join('')}
           </tr>
@@ -2482,7 +2513,7 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
 
 async function renderGads(s, e) {
   document.getElementById('gadsCampBody').innerHTML = '<tr><td colspan="11" class="loading-cell">載入中…</td></tr>';
-  const all = await loadGadsData();
+  const all = (await loadGadsData()).filter(r => isEcomm(r.campaign));
   const rows = all.filter(r => r.date>=s && r.date<=e);
 
   const sumRows = rs => rs.reduce((a,r)=>{ a.cost+=r.cost;a.imp+=r.imp;a.clicks+=r.clicks;a.atc+=r.atc;a.purchase+=r.purchase;a.revenue+=r.revenue; return a; },
@@ -2524,15 +2555,17 @@ async function renderGads(s, e) {
   document.getElementById('gadsDailyBody').innerHTML = dailyKeys.map(k => {
     const v = byDate[k];
     const dctr=v.imp>0?v.clicks/v.imp*100:0, dcpc=v.clicks>0?v.cost/v.clicks:0;
+    const dcvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const dcpa=v.purchase>0?v.cost/v.purchase:0, droas=v.cost>0?v.revenue/v.cost:0;
     return `<tr>
       <td><span class="cell-name">${groupLabel(k)}</span></td>
       <td>${fmtM(v.cost)}</td><td>${fmtN(v.imp)}</td><td>${fmtN(v.clicks)}</td>
       <td>${dctr.toFixed(2)}%</td><td>${fmtM(dcpc)}</td><td>${fmtN(v.atc)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(dcpa):'<span class="na">—</span>'}</td>
+      <td>${fmtN(v.purchase)}</td><td>${dcvr>0?dcvr.toFixed(2)+'%':'<span class="na">—</span>'}</td>
+      <td>${v.purchase>0?fmtM(dcpa):'<span class="na">—</span>'}</td>
       <td>${droas.toFixed(2)}</td><td>${fmtM(v.revenue)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
+  }).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
 
   // campaigns
   const byCamp = {};
@@ -2544,15 +2577,17 @@ async function renderGads(s, e) {
   const campSorted = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost);
   document.getElementById('gadsCampBody').innerHTML = campSorted.map(([name,v]) => {
     const cctr=v.imp>0?v.clicks/v.imp*100:0, ccpc=v.clicks>0?v.cost/v.clicks:0;
+    const ccvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const ccpa=v.purchase>0?v.cost/v.purchase:0, croas=v.cost>0?v.revenue/v.cost:0;
     return `<tr>
       <td><span class="cell-name" title="${name}">${name}</span></td>
       <td>${fmtM(v.cost)}</td><td>${fmtN(v.imp)}</td><td>${fmtN(v.clicks)}</td>
       <td>${cctr.toFixed(2)}%</td><td>${fmtM(ccpc)}</td><td>${fmtN(v.atc)}</td>
-      <td>${fmtN(v.purchase)}</td><td>${v.purchase>0?fmtM(ccpa):'<span class="na">—</span>'}</td>
+      <td>${fmtN(v.purchase)}</td><td>${ccvr>0?ccvr.toFixed(2)+'%':'<span class="na">—</span>'}</td>
+      <td>${v.purchase>0?fmtM(ccpa):'<span class="na">—</span>'}</td>
       <td>${croas.toFixed(2)}</td><td>${fmtM(v.revenue)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="11" class="loading-cell">此期間無資料</td></tr>';
+  }).join('') || '<tr><td colspan="12" class="loading-cell">此期間無資料</td></tr>';
 
   drawDonut('gadsDonut', campSorted.slice(0,8).map(([n,v])=>({name:n, val:v.cost})));
 

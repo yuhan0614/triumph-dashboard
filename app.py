@@ -260,6 +260,7 @@ def _fetch_ga4_sources(since, until):
             Dimension(name="date"),
             Dimension(name="sessionSource"),
             Dimension(name="sessionMedium"),
+            Dimension(name="sessionCampaignName"),
         ],
         metrics=[
             Metric(name="sessions"),
@@ -276,6 +277,8 @@ def _fetch_ga4_sources(since, until):
         medium = row.dimension_values[2].value.lower()
         channel = SOURCE_MAP.get((source, medium))
         if not channel:
+            continue
+        if "ecomm" not in row.dimension_values[3].value.lower():
             continue
         m = row.metric_values
         date_str = f"{d[:4]}-{d[4:6]}-{d[6:]}"
