@@ -693,6 +693,18 @@
       </div>
     </div>
 
+    <div class="chart-card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0">📊 PMax 兩檔活動 × 管道</h3>
+        <div style="display:flex;gap:4px">
+          <button id="_pmBtn_cost" onclick="switchPmaxMetric('cost')" style="padding:4px 12px;border-radius:20px;border:1px solid #1677ff;background:#1677ff;color:#fff;font-size:12px;cursor:pointer">花費</button>
+          <button id="_pmBtn_revenue" onclick="switchPmaxMetric('revenue')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">營收</button>
+          <button id="_pmBtn_purchase" onclick="switchPmaxMetric('purchase')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">購買</button>
+        </div>
+      </div>
+      <div style="position:relative;height:280px"><canvas id="_pmaxCampCanvas"></canvas></div>
+    </div>
+
     <div class="table-card">
       <div class="table-header"><h3>📡 PMax 管道成效</h3><span class="sub">Performance Max 各版位拆分（API 專屬，Google Ads 後台看不到）</span></div>
       <div class="table-wrap">
@@ -2853,6 +2865,65 @@ async function renderGads(s, e, src='csv') {
       });
       return m;
     };
+    // 兩檔活動 × 管道
+    const shortName = n => (n||'').split('Performance Max_').pop().replace(/_/g,' ').trim() || n;
+    const cur = pr.filter(r => r.date>=s && r.date<=e);
+    const chOrder = [...new Set(cur.map(r => r.channel_label || r.channel))];
+    const campNames = [...new Set(cur.map(r => r.campaign))];
+    const cell = {};
+    cur.forEach(r => {
+      const k = (r.channel_label || r.channel) + '||' + r.campaign;
+      if (!cell[k]) cell[k] = {cost:0, revenue:0, purchase:0};
+      cell[k].cost += r.cost; cell[k].revenue += r.revenue; cell[k].purchase += r.purchase;
+    });
+    const PM_COLORS = ['rgba(22,119,255,0.75)','rgba(250,140,22,0.75)','rgba(82,196,26,0.75)'];
+    const pmDatasets = metric => campNames.map((cn, i) => ({
+      label: shortName(cn),
+      data: chOrder.map(ch => (cell[ch+'||'+cn] || {})[metric] || 0),
+      backgroundColor: PM_COLORS[i % PM_COLORS.length],
+      stack: 'pm',
+    }));
+    const pmFmt = (metric, v) => metric==='purchase' ? Math.round(v).toLocaleString('zh-TW')
+                                                     : 'NT$'+Math.round(v).toLocaleString('zh-TW');
+    const pmOpts = metric => ({
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top', labels:{font:{size:11}, boxWidth:12, padding:10}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${pmFmt(metric,c.raw)}`}},
+        datalabels:{
+          display: ctx => {
+            const t = ctx.chart.data.datasets.reduce((a,d)=>a+(d.data[ctx.dataIndex]||0),0);
+            return t>0 && (ctx.raw||0)/t > 0.08;
+          },
+          formatter:(v,ctx)=>{
+            const t = ctx.chart.data.datasets.reduce((a,d)=>a+(d.data[ctx.dataIndex]||0),0);
+            return t>0 ? (v/t*100).toFixed(0)+'%' : '';
+          },
+          color:'#fff', font:{size:10,weight:'bold'}, anchor:'center', align:'center',
+        },
+      },
+      scales:{
+        x:{stacked:true, grid:{display:false}, ticks:{font:{size:11}}},
+        y:{stacked:true, beginAtZero:true, grid:{color:'#f0f2f5'},
+           ticks:{font:{size:10}, callback:v => metric==='purchase' ? v : 'NT$'+Math.round(v/1000)+'K'}},
+      },
+    });
+    if (window._pmaxChart) window._pmaxChart.destroy();
+    window._pmaxChart = new Chart(document.getElementById('_pmaxCampCanvas'), {
+      type:'bar', plugins:[ChartDataLabels],
+      data:{labels: chOrder, datasets: pmDatasets('cost')},
+      options: pmOpts('cost'),
+    });
+    window.switchPmaxMetric = m => {
+      ['cost','revenue','purchase'].forEach(k => {
+        const b = document.getElementById('_pmBtn_'+k), on = k===m;
+        b.style.cssText = `padding:4px 12px;border-radius:20px;border:1px solid ${on?'#1677ff':'#d1d5db'};background:${on?'#1677ff':'#fff'};color:${on?'#fff':'#374151'};font-size:12px;cursor:pointer`;
+      });
+      window._pmaxChart.data.datasets = pmDatasets(m);
+      window._pmaxChart.options = pmOpts(m);
+      window._pmaxChart.update();
+    };
+
     const pc = byCh(s, e), pp = byCh(ps, pe);
     const pTot = Object.values(pc).reduce((a,v)=>({cost:a.cost+v.cost, revenue:a.revenue+v.revenue}), {cost:0,revenue:0});
     const savedTot = tot.cost, savedRev = tot.revenue;
