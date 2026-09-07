@@ -693,19 +693,6 @@
       </div>
     </div>
 
-    <div class="chart-card" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <h3 style="margin:0">📊 PMax 兩檔活動 × 管道</h3>
-        <div style="display:flex;gap:4px">
-          <button id="_pmBtn_cost" onclick="switchPmaxMetric('cost')" style="padding:4px 12px;border-radius:20px;border:1px solid #1677ff;background:#1677ff;color:#fff;font-size:12px;cursor:pointer">花費</button>
-          <button id="_pmBtn_revenue" onclick="switchPmaxMetric('revenue')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">營收</button>
-          <button id="_pmBtn_purchase" onclick="switchPmaxMetric('purchase')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">購買</button>
-        </div>
-      </div>
-      <div style="position:relative;height:280px"><canvas id="_pmaxCampCanvas"></canvas></div>
-    </div>
-
-    <div class="table-card">
       <div class="table-header"><h3>📡 PMax 管道成效</h3><span class="sub">Performance Max 各版位拆分（API 專屬，Google Ads 後台看不到）</span></div>
       <div class="table-wrap">
         <table id="gadsPmaxTable">
@@ -726,6 +713,44 @@
             <th onclick="sortT('gadsPmaxTable',13)">營收佔比</th>
           </tr></thead>
           <tbody id="gadsPmaxBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0">📊 PMax 兩檔活動 × 管道</h3>
+        <div style="display:flex;gap:4px">
+          <button id="_pmBtn_cost" onclick="switchPmaxMetric('cost')" style="padding:4px 12px;border-radius:20px;border:1px solid #1677ff;background:#1677ff;color:#fff;font-size:12px;cursor:pointer">花費</button>
+          <button id="_pmBtn_revenue" onclick="switchPmaxMetric('revenue')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">營收</button>
+          <button id="_pmBtn_purchase" onclick="switchPmaxMetric('purchase')" style="padding:4px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:12px;cursor:pointer">購買</button>
+        </div>
+      </div>
+      <div style="position:relative;height:280px"><canvas id="_pmaxCampCanvas"></canvas></div>
+    </div>
+
+
+    <div class="table-card">
+      <div class="table-header"><h3>🎯 PMax 兩檔活動</h3></div>
+      <div class="table-wrap">
+        <table id="gadsPmaxCampTable">
+          <thead><tr>
+            <th onclick="sortT('gadsPmaxCampTable',0)">廣告活動</th>
+            <th onclick="sortT('gadsPmaxCampTable',1)">花費</th>
+            <th onclick="sortT('gadsPmaxCampTable',2)">曝光</th>
+            <th onclick="sortT('gadsPmaxCampTable',3)">點擊</th>
+            <th onclick="sortT('gadsPmaxCampTable',4)">CTR</th>
+            <th onclick="sortT('gadsPmaxCampTable',5)">CPC</th>
+            <th onclick="sortT('gadsPmaxCampTable',6)">加車</th>
+            <th onclick="sortT('gadsPmaxCampTable',7)">購買</th>
+            <th onclick="sortT('gadsPmaxCampTable',8)">CVR</th>
+            <th onclick="sortT('gadsPmaxCampTable',9)">CPA</th>
+            <th onclick="sortT('gadsPmaxCampTable',10)">ROAS</th>
+            <th onclick="sortT('gadsPmaxCampTable',11)">營收</th>
+            <th onclick="sortT('gadsPmaxCampTable',12)">花費佔比</th>
+            <th onclick="sortT('gadsPmaxCampTable',13)">營收佔比</th>
+          </tr></thead>
+          <tbody id="gadsPmaxCampBody"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -2932,6 +2957,23 @@ async function renderGads(s, e, src='csv') {
       Object.entries(pc).sort((a,b)=>b[1].cost-a[1].cost)
         .map(([k,v]) => gadsRow(k, v, pp[k])).join('')
       || '<tr><td colspan="14" class="loading-cell">此期間無 PMax 資料</td></tr>';
+
+    const byCamp2 = (lo,hi) => {
+      const m = {};
+      pr.filter(r => r.date>=lo && r.date<=hi).forEach(r => {
+        if (!m[r.campaign]) m[r.campaign] = emptyG();
+        const a = m[r.campaign];
+        a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks;
+        a.atc+=r.atc; a.purchase+=r.purchase; a.revenue+=r.revenue;
+      });
+      return m;
+    };
+    const cc = byCamp2(s, e), cp = byCamp2(ps, pe);
+    document.getElementById('gadsPmaxCampBody').innerHTML =
+      Object.entries(cc).sort((a,b)=>b[1].cost-a[1].cost)
+        .map(([k,v]) => gadsRow(shortName(k), v, cp[k])).join('')
+      || '<tr><td colspan="14" class="loading-cell">此期間無 PMax 資料</td></tr>';
+
     tot.cost = savedTot; tot.revenue = savedRev;
   }
 
