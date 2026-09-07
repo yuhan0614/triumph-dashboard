@@ -1088,7 +1088,7 @@ async function renderCreative(s, e) {
   }
   const base = window.location.origin;
   const res = await fetch(`${base}/api/insights?accounts=${META_ACCOUNT}&since=${toApiDate(effStart)}&until=${toApiDate(e)}&level=ad&time_increment=all_days`).then(r=>r.json());
-  const ads = (res.data||[]).filter(r => !(r.ad_name||'').toLowerCase().includes('non'));
+  const ads = ecommOnly(res.data).filter(r => !(r.ad_name||'').toLowerCase().includes('non'));
   const triumph = buildCreativeGroups(ads.filter(r => !isSloggi(r.campaign_name)));
   const sloggi  = buildCreativeGroups(ads.filter(r =>  isSloggi(r.campaign_name)));
   document.getElementById('creTriumphBody').innerHTML = triumph.map(creRow).join('') || '<tr><td colspan="11" class="loading-cell">此期間無素材</td></tr>';

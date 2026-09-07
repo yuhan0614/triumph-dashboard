@@ -278,7 +278,9 @@ def _fetch_ga4_sources(since, until):
         channel = SOURCE_MAP.get((source, medium))
         if not channel:
             continue
-        if "ecomm" not in row.dimension_values[3].value.lower():
+        # 未被代換的 UTM 巨集（如 {{campaign.name}}）仍是廣告流量，一併算進來
+        campaign = row.dimension_values[3].value
+        if "ecomm" not in campaign.lower() and "{{" not in campaign:
             continue
         m = row.metric_values
         date_str = f"{d[:4]}-{d[4:6]}-{d[6:]}"
