@@ -174,7 +174,6 @@
   <div class="tab" id="tabBtnMeta" onclick="switchTab('meta')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg)"/></svg>Meta 廣告</div>
   <div class="tab" id="tabBtnCreative" onclick="switchTab('creative')"><svg width="18" height="18" viewBox="0 0 60 60" style="margin-right:5px;vertical-align:-3px" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg2" x1="0" y1="30" x2="60" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0082FB"/><stop offset="100%" stop-color="#0066E0"/></linearGradient></defs><path d="M10 30c0-6.627 4.477-12 10-12 3.2 0 5.8 1.6 8 4.5 1.4 1.87 2.6 4.1 4 7.5 1.4-3.4 2.6-5.63 4-7.5 2.2-2.9 4.8-4.5 8-4.5 5.523 0 10 5.373 10 12s-4.477 12-10 12c-3.2 0-5.8-1.6-8-4.5-1.4-1.87-2.6-4.1-4-7.5-1.4 3.4-2.6 5.63-4 7.5C15.8 40.4 13.2 42 10 42 4.477 42 0 36.627 0 30z" transform="translate(5,0)" fill="url(#mg2)"/></svg>Meta 素材</div>
   <div class="tab" id="tabBtnGoogle" onclick="switchTab('google')"><svg width="16" height="16" viewBox="0 0 48 48" style="margin-right:5px;vertical-align:-2px" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.2 0 5.9 1.1 8.1 2.9l6-6C34.5 3.1 29.6 1 24 1 14.8 1 6.9 6.6 3.3 14.6l7 5.4C12 14.1 17.5 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-4 6.8-9.9 6.8-16.9z" /><path fill="#FBBC05" d="M10.3 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7-5.4A23 23 0 0 0 1 24c0 3.7.9 7.2 2.3 10.4l7-5.8z"/><path fill="#34A853" d="M24 47c5.6 0 10.3-1.9 13.7-5.1l-7.3-5.7c-1.9 1.3-4.2 2-6.4 2-6.5 0-12-4.6-13.9-10.8l-7 5.8C6.9 41.4 14.8 47 24 47z"/><path fill="none" d="M1 1h46v46H1z"/></svg>Google 廣告</div>
-  <div class="tab" id="tabBtnGoogleapi" onclick="switchTab('googleapi')" style="opacity:.7;font-size:12px">🧪 Google (API)</div>
 </div>
 
 <div class="controls">
@@ -606,93 +605,6 @@
         </table>
       </div>
     </div>
-  </div>
-  <div id="tab-googleapi" style="display:none;">
-    <div class="summary-grid" id="gadsMetricsApi"></div>
-
-    <div class="charts-row">
-      <div class="chart-card">
-        <h3>📅 每日趨勢（花費 / ROAS）</h3>
-        <div class="chart-wrap"><canvas id="gadsChartApi"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <h3>📊 Campaign 花費佔比</h3>
-        <div class="chart-wrap"><canvas id="gadsDonutApi"></canvas></div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <div class="table-header"><h3>📅 每日明細</h3></div>
-      <div class="table-wrap">
-        <table id="gadsDailyTableApi">
-          <thead><tr>
-            <th onclick="sortT('gadsDailyTableApi',0)">日期</th>
-            <th onclick="sortT('gadsDailyTableApi',1)">花費</th>
-            <th onclick="sortT('gadsDailyTableApi',2)">曝光</th>
-            <th onclick="sortT('gadsDailyTableApi',3)">點擊</th>
-            <th onclick="sortT('gadsDailyTableApi',4)">CTR</th>
-            <th onclick="sortT('gadsDailyTableApi',5)">CPC</th>
-            <th onclick="sortT('gadsDailyTableApi',6)">加車</th>
-            <th onclick="sortT('gadsDailyTableApi',7)">購買</th>
-            <th onclick="sortT('gadsDailyTableApi',8)">CVR</th>
-            <th onclick="sortT('gadsDailyTableApi',9)">CPA</th>
-            <th onclick="sortT('gadsDailyTableApi',10)">ROAS</th>
-            <th onclick="sortT('gadsDailyTableApi',11)">營收</th>
-          </tr></thead>
-          <tbody id="gadsDailyBodyApi"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <div class="table-header"><h3>🎯 廣告活動</h3></div>
-      <div class="table-wrap">
-        <table id="gadsCampTableApi">
-          <thead><tr>
-            <th onclick="sortT('gadsCampTableApi',0)">廣告活動</th>
-            <th onclick="sortT('gadsCampTableApi',1)">花費</th>
-            <th onclick="sortT('gadsCampTableApi',2)">曝光</th>
-            <th onclick="sortT('gadsCampTableApi',3)">點擊</th>
-            <th onclick="sortT('gadsCampTableApi',4)">CTR</th>
-            <th onclick="sortT('gadsCampTableApi',5)">CPC</th>
-            <th onclick="sortT('gadsCampTableApi',6)">加車</th>
-            <th onclick="sortT('gadsCampTableApi',7)">購買</th>
-            <th onclick="sortT('gadsCampTableApi',8)">CVR</th>
-            <th onclick="sortT('gadsCampTableApi',9)">CPA</th>
-            <th onclick="sortT('gadsCampTableApi',10)">ROAS</th>
-            <th onclick="sortT('gadsCampTableApi',11)">營收</th>
-            <th onclick="sortT('gadsCampTableApi',12)">花費佔比</th>
-            <th onclick="sortT('gadsCampTableApi',13)">營收佔比</th>
-          </tr></thead>
-          <tbody id="gadsCampBodyApi"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <div class="table-header"><h3>🗂️ 分廣告類別</h3></div>
-      <div class="table-wrap">
-        <table id="gadsCatTableApi">
-          <thead><tr>
-            <th onclick="sortT('gadsCatTableApi',0)">類別</th>
-            <th onclick="sortT('gadsCatTableApi',1)">花費</th>
-            <th onclick="sortT('gadsCatTableApi',2)">曝光</th>
-            <th onclick="sortT('gadsCatTableApi',3)">點擊</th>
-            <th onclick="sortT('gadsCatTableApi',4)">CTR</th>
-            <th onclick="sortT('gadsCatTableApi',5)">CPC</th>
-            <th onclick="sortT('gadsCatTableApi',6)">加車</th>
-            <th onclick="sortT('gadsCatTableApi',7)">購買</th>
-            <th onclick="sortT('gadsCatTableApi',8)">CVR</th>
-            <th onclick="sortT('gadsCatTableApi',9)">CPA</th>
-            <th onclick="sortT('gadsCatTableApi',10)">ROAS</th>
-            <th onclick="sortT('gadsCatTableApi',11)">營收</th>
-            <th onclick="sortT('gadsCatTableApi',12)">花費佔比</th>
-            <th onclick="sortT('gadsCatTableApi',13)">營收佔比</th>
-          </tr></thead>
-          <tbody id="gadsCatBodyApi"><tr><td colspan="14" class="loading-cell">載入中…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
 
     <div class="table-card">
       <div class="table-header"><h3>📡 PMax 管道成效</h3><span class="sub">Performance Max 各版位拆分（API 專屬，Google Ads 後台看不到）</span></div>
@@ -798,7 +710,6 @@
 
 <script>
 const META_ACCOUNT = '629806431400540';
-const GADS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTk7KsiyuNYxl_7yzECPUok1pVjkWUvBacHLFhIyuGb2YwDPhGpNc1SyfdmViSFpbeaY7632RSvx7kT/pub?gid=1358515165&single=true&output=csv';
 
 let activeTab = 'overall';
 let grp = 'D';
@@ -914,11 +825,14 @@ function fmtPp(cur, prev, inv=false) {
 const _renderedTabs = {};  // { 'overall_2026-07-24_2026-07-30': true }
 
 function _tabCacheKey(tab) { return `${tab}_${curStart}_${curEnd}`; }
-function _invalidateTabCache() { Object.keys(_renderedTabs).forEach(k => delete _renderedTabs[k]); }
+function _invalidateTabCache() {
+  Object.keys(_renderedTabs).forEach(k => delete _renderedTabs[k]);
+  Object.keys(_gadsCache).forEach(k => delete _gadsCache[k]);
+}
 
 function switchTab(tab) {
   activeTab = tab;
-  ['overall','overallv2','ga4','meta','creative','google','googleapi'].forEach(t => {
+  ['overall','overallv2','ga4','meta','creative','google'].forEach(t => {
     const btn = document.getElementById('tabBtn'+t.charAt(0).toUpperCase()+t.slice(1));
     if (btn) btn.classList.toggle('active', tab===t);
     const el = document.getElementById('tab-'+t);
@@ -944,7 +858,6 @@ async function refresh(force=false) {
     else if (activeTab === 'ga4') await renderGA4(curStart, curEnd);
     else if (activeTab === 'meta') await renderMeta(curStart, curEnd);
     else if (activeTab === 'creative') await renderCreative(curStart, curEnd);
-    else if (activeTab === 'googleapi') await renderGads(curStart, curEnd, 'api');
     else await renderGads(curStart, curEnd);
     _renderedTabs[_tabCacheKey(activeTab)] = true;
   } catch (err) {
@@ -1407,7 +1320,7 @@ async function renderOverall(s, e) {
   const [trendRes, ga4Res, gadsAll] = await Promise.all([
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=1`).then(r=>r.json()),
     fetch(`/api/ga4/sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    loadGadsData(),
+    loadGadsData(s, e),
   ]);
   const metaTrend = ecommOnly(trendRes.data);
   const metaTot = metaTrend.reduce((a,r)=>{ a.spend+=(r.spend||0); a.impressions+=(r.impressions||0); a.link_clicks+=(r.link_clicks||0); a.purchase+=(r.purchase||0); a.purchase_value+=(r.purchase_value||0); return a; }, {spend:0,impressions:0,link_clicks:0,purchase:0,purchase_value:0});
@@ -1855,20 +1768,21 @@ async function renderOverall(s, e) {
   document.getElementById('overallMediaBody').innerHTML = html;
 }
 
-let GADS_DATA = null;
-async function loadGadsData() {
-  if (GADS_DATA) return GADS_DATA;
-  const res = await fetch(GADS_CSV);
-  const text = await res.text();
-  GADS_DATA = text.trim().split('\n').slice(1).map(line => {
-    const c = line.split(',');
-    return {
-      date:(c[0]||'').trim().replace(/-/g,''), campaign:(c[1]||'').trim(),
-      cost:+c[2]||0, imp:+c[3]||0, clicks:+c[4]||0, ctr:+c[5]||0, cpc:+c[6]||0,
-      atc:+c[7]||0, purchase:+c[8]||0, revenue:+c[9]||0, cpa:+c[10]||0, roas:+c[11]||0,
-    };
-  }).filter(r => r.date && r.campaign);
-  return GADS_DATA;
+const _gadsCache = {};
+async function loadGadsData(s, e) {
+  const [ps] = getPrevRange(s, e);
+  const since = toApiDate(ps), until = toApiDate(e);
+  const key = since + '_' + until;
+  if (!_gadsCache[key]) {
+    _gadsCache[key] = fetch(`/api/gads?report=campaign&since=${since}&until=${until}`)
+      .then(r => r.json())
+      .then(r => {
+        if (r.error) throw new Error(r.error);
+        return (r.data || []).map(x => ({...x, date: (x.date||'').replace(/-/g,'')}));
+      })
+      .catch(err => { delete _gadsCache[key]; throw err; });
+  }
+  return _gadsCache[key];
 }
 
 // ══════════ 新版總成效 ══════════
@@ -1883,7 +1797,7 @@ async function renderOverallV2(s, e) {
   const [trendRes, ga4Res, gadsAll, metaPrevRes, ga4PrevRes] = await Promise.all([
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=campaign&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({data:[]})),
-    loadGadsData(),
+    loadGadsData(s, e),
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${pse}&until=${pee}&level=campaign&time_increment=all_days`).then(r=>r.json()).catch(()=>({data:[]})),
     fetch(`/api/ga4/sources?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({data:[]})),
   ]);
@@ -2368,7 +2282,7 @@ async function renderGA4(s, e) {
     fetch(`/api/ga4/bundle?since=${se}&until=${ee}`).then(r=>r.json()).catch(()=>({})),
     fetch(`/api/ga4/bundle?since=${pse}&until=${pee}`).then(r=>r.json()).catch(()=>({})),
     fetch(`/api/insights?accounts=${META_ACCOUNT}&since=${se}&until=${ee}&level=account&time_increment=1`).then(r=>r.json()).catch(()=>({data:[]})),
-    loadGadsData(),
+    loadGadsData(s, e),
   ]);
 
   // 存 localStorage（TTL 2 小時）
@@ -2741,21 +2655,10 @@ async function _renderGA4Content(el, bundleRes, prevBundleRes, metaSpendRes, gad
   });
 }
 
-async function loadGadsApiData(since, until) {
-  const r = await fetch(`/api/gads?report=campaign&since=${since}&until=${until}`).then(x=>x.json());
-  if (r.error) throw new Error(r.error);
-  return (r.data||[]).map(x => ({...x, date: (x.date||'').replace(/-/g,'')}));
-}
-
-async function renderGads(s, e, src='csv') {
-  const X = src==='api' ? 'Api' : '';
-  const gid = n => n + X;
-  document.getElementById(gid('gadsCampBody')).innerHTML = '<tr><td colspan="14" class="loading-cell">載入中…</td></tr>';
+async function renderGads(s, e) {
+  document.getElementById('gadsCampBody').innerHTML = '<tr><td colspan="14" class="loading-cell">載入中…</td></tr>';
   const [ps0, pe0] = getPrevRange(s, e);
-  const all = (src==='api'
-      ? await loadGadsApiData(toApiDate(ps0), toApiDate(e))
-      : await loadGadsData()
-    ).filter(r => isEcomm(r.campaign));
+  const all = (await loadGadsData(s, e)).filter(r => isEcomm(r.campaign));
   const rows = all.filter(r => r.date>=s && r.date<=e);
 
   const sumRows = rs => rs.reduce((a,r)=>{ a.cost+=r.cost;a.imp+=r.imp;a.clicks+=r.clicks;a.atc+=r.atc;a.purchase+=r.purchase;a.revenue+=r.revenue; return a; },
@@ -2768,7 +2671,7 @@ async function renderGads(s, e, src='csv') {
   const pctr=prev.imp>0?prev.clicks/prev.imp*100:0, pcpc=prev.clicks>0?prev.cost/prev.clicks:0;
   const pcpa=prev.purchase>0?prev.cost/prev.purchase:0, proas=prev.cost>0?prev.revenue/prev.cost:0;
 
-  document.getElementById(gid('gadsMetrics')).innerHTML = [
+  document.getElementById('gadsMetrics').innerHTML = [
     {cls:'c-blue',  lbl:'花費', val:fmtM(tot.cost),        sub:fmtChg(tot.cost, prev.cost)},
     {cls:'',        lbl:'CTR',  val:ctr.toFixed(2)+'%',    sub:fmtChg(ctr, pctr)},
     {cls:'',        lbl:'CPC',  val:fmtM(cpc),             sub:fmtChg(cpc, pcpc)},
@@ -2789,12 +2692,12 @@ async function renderGads(s, e, src='csv') {
   });
   const dailyKeys = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
   const chartKeys = dailyKeys.slice().reverse();
-  drawTrend(gid('gadsChart'), chartKeys.map(groupLabel),
+  drawTrend('gadsChart', chartKeys.map(groupLabel),
     chartKeys.map(k=>byDate[k].cost),
     chartKeys.map(k=>byDate[k].cost>0?byDate[k].revenue/byDate[k].cost:0),
     chartKeys.length);
 
-  document.getElementById(gid('gadsDailyBody')).innerHTML = dailyKeys.map(k => {
+  document.getElementById('gadsDailyBody').innerHTML = dailyKeys.map(k => {
     const v = byDate[k];
     const dctr=v.imp>0?v.clicks/v.imp*100:0, dcpc=v.clicks>0?v.cost/v.clicks:0;
     const dcvr=v.clicks>0?v.purchase/v.clicks*100:0;
@@ -2856,7 +2759,7 @@ async function renderGads(s, e, src='csv') {
     </tr>`;
   };
 
-  document.getElementById(gid('gadsCampBody')).innerHTML =
+  document.getElementById('gadsCampBody').innerHTML =
     campSorted.map(([name,v]) => gadsRow(name, v, prevByCamp[name])).join('')
     || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
 
@@ -2880,13 +2783,13 @@ async function renderGads(s, e, src='csv') {
   const catCur  = aggBy(rows, gadsCat);
   const catPrev = aggBy(all.filter(r => r.date>=ps && r.date<=pe), gadsCat);
   const CAT_ORDER = ['SEM','PMax','其他'];
-  document.getElementById(gid('gadsCatBody')).innerHTML =
+  document.getElementById('gadsCatBody').innerHTML =
     CAT_ORDER.filter(k => catCur[k]).map(k => gadsRow(k, catCur[k], catPrev[k])).join('')
     || '<tr><td colspan="14" class="loading-cell">此期間無資料</td></tr>';
 
-  drawDonut(gid('gadsDonut'), campSorted.slice(0,8).map(([n,v])=>({name:n, val:v.cost})));
+  drawDonut('gadsDonut', campSorted.slice(0,8).map(([n,v])=>({name:n, val:v.cost})));
 
-  if (src === 'api') {
+  {
     const px = await fetch(`/api/gads?report=pmax&since=${toApiDate(ps0)}&until=${toApiDate(e)}`)
       .then(x=>x.json()).catch(()=>({data:[]}));
     const pr = (px.data||[]).map(r => ({...r, date:(r.date||'').replace(/-/g,'')}));
