@@ -1391,7 +1391,7 @@ function toggleMetaCamp(safeId) {
 function togglePmaxCamp(id) {
   const rows = document.querySelectorAll(`.pmxdetail-${id}`);
   const btn  = document.getElementById(`pmx-${id}`);
-  const open = rows[0] && rows[0].style.display !== 'none';
+  const open = rows[0] && getComputedStyle(rows[0]).display !== 'none';
   rows.forEach(r => r.style.display = open ? 'none' : '');
   if (btn) btn.textContent = open ? '▶' : '▼';
 }
@@ -2838,8 +2838,9 @@ async function renderGads(s, e, src='csv') {
     q = q || emptyG();
     T = T || tot; P = P || prev;
     const nameCell = expandId
-      ? `<span id="pmx-${expandId}" onclick="togglePmaxCamp('${expandId}')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span class="cell-name" title="${name}">${name}</span>`
+      ? `<span id="pmx-${expandId}" onclick="togglePmaxCamp('${expandId}')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#666">▼</span><span class="cell-name" title="${name}">${name}</span>`
       : `<span class="cell-name" title="${name}">${name}</span>`;
+    const rowAttr = expandId ? ' style="background:#e8f1ff;font-weight:700;border-top:2px solid #b9d4ff"' : '';
     const cctr=v.imp>0?v.clicks/v.imp*100:0, ccpc=v.clicks>0?v.cost/v.clicks:0;
     const ccvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const ccpa=v.purchase>0?v.cost/v.purchase:0, croas=v.cost>0?v.revenue/v.cost:0;
@@ -2847,7 +2848,7 @@ async function renderGads(s, e, src='csv') {
     const qcvr=q.clicks>0?q.purchase/q.clicks*100:0;
     const qcpa=q.purchase>0?q.cost/q.purchase:0, qroas=q.cost>0?q.revenue/q.cost:0;
     const c=(val,chg)=>`<td>${val}${chg?'<br>'+chg:''}</td>`;
-    return `<tr>
+    return `<tr${rowAttr}>
       <td>${nameCell}</td>
       ${c(fmtM(v.cost), fmtChg(v.cost,q.cost))}
       ${c(fmtN(v.imp), fmtChg(v.imp,q.imp))}
@@ -3008,7 +3009,7 @@ async function renderGads(s, e, src='csv') {
         const chs = ccc[cn] || {}, chp = ccp[cn] || {};
         html += Object.entries(chs).sort((a,b)=>b[1].cost-a[1].cost).map(([ch, cv]) =>
           gadsRow(ch, cv, chp[ch], v, q).replace(
-            '<tr>', `<tr class="pmxdetail-${id}" style="display:none;background:#fafbfc;font-size:12px">`)
+            '<tr>', `<tr class="pmxdetail-${id}" style="background:#fafbfc;font-size:12px">`)
         ).join('');
         return html;
       }).join('')
