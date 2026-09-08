@@ -1119,6 +1119,14 @@ function mergeAdsets(rows) {
   });
   return Object.values(map).sort((a,b)=>b.spend-a.spend);
 }
+function shareCellChg(val, total, pVal, pTotal) {
+  const pct  = total>0  ? val/total*100 : 0;
+  const pPct = pTotal>0 ? (pVal||0)/pTotal*100 : 0;
+  const chg  = (pTotal>0 && pVal!=null) ? fmtPp(pct, pPct) : '';
+  return `<td><div class="spend-bar-wrap"><span style="font-size:11px;color:#888">${pct.toFixed(1)}%</span>`
+    + `<div class="spend-bar" style="width:${Math.round(pct/100*60)}px"></div></div>`
+    + (chg ? `<div style="font-size:10px;margin-top:2px">${chg}</div>` : '') + `</td>`;
+}
 function shareCell(spend, total) {
   const pct = total>0 ? spend/total*100 : 0;
   return `<td><div class="spend-bar-wrap"><span style="font-size:11px;color:#888">${pct.toFixed(1)}%</span><div class="spend-bar" style="width:${Math.round(pct/100*60)}px"></div></div></td>`;
@@ -1376,6 +1384,13 @@ let OVERALL_CHART = null, OVERALL_DONUT = null, OVERALL_GA4REV_CHART = null, OVE
 function toggleMetaCamp(safeId) {
   const rows = document.querySelectorAll(`.detail-${safeId}`);
   const btn  = document.getElementById(`exp-${safeId}`);
+  const open = rows[0] && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : '');
+  if (btn) btn.textContent = open ? '▶' : '▼';
+}
+function togglePmaxCamp(id) {
+  const rows = document.querySelectorAll(`.pmxdetail-${id}`);
+  const btn  = document.getElementById(`pmx-${id}`);
   const open = rows[0] && rows[0].style.display !== 'none';
   rows.forEach(r => r.style.display = open ? 'none' : '');
   if (btn) btn.textContent = open ? '▶' : '▼';
@@ -2819,8 +2834,12 @@ async function renderGads(s, e, src='csv') {
   });
   const campSorted = Object.entries(byCamp).sort((a,b)=>b[1].cost-a[1].cost);
   const emptyG = () => ({cost:0,imp:0,clicks:0,atc:0,purchase:0,revenue:0});
-  const gadsRow = (name, v, q) => {
+  const gadsRow = (name, v, q, T, P, expandId) => {
     q = q || emptyG();
+    T = T || tot; P = P || prev;
+    const nameCell = expandId
+      ? `<span id="pmx-${expandId}" onclick="togglePmaxCamp('${expandId}')" style="cursor:pointer;margin-right:6px;font-size:11px;color:#aaa">▶</span><span class="cell-name" title="${name}">${name}</span>`
+      : `<span class="cell-name" title="${name}">${name}</span>`;
     const cctr=v.imp>0?v.clicks/v.imp*100:0, ccpc=v.clicks>0?v.cost/v.clicks:0;
     const ccvr=v.clicks>0?v.purchase/v.clicks*100:0;
     const ccpa=v.purchase>0?v.cost/v.purchase:0, croas=v.cost>0?v.revenue/v.cost:0;
@@ -2829,7 +2848,7 @@ async function renderGads(s, e, src='csv') {
     const qcpa=q.purchase>0?q.cost/q.purchase:0, qroas=q.cost>0?q.revenue/q.cost:0;
     const c=(val,chg)=>`<td>${val}${chg?'<br>'+chg:''}</td>`;
     return `<tr>
-      <td><span class="cell-name" title="${name}">${name}</span></td>
+      <td>${nameCell}</td>
       ${c(fmtM(v.cost), fmtChg(v.cost,q.cost))}
       ${c(fmtN(v.imp), fmtChg(v.imp,q.imp))}
       ${c(fmtN(v.clicks), fmtChg(v.clicks,q.clicks))}
@@ -2841,8 +2860,8 @@ async function renderGads(s, e, src='csv') {
       ${c(v.purchase>0?fmtM(ccpa):'<span class="na">—</span>', fmtChg(ccpa,qcpa,true))}
       ${c(croas.toFixed(2), fmtChg(croas,qroas))}
       ${c(fmtM(v.revenue), fmtChg(v.revenue,q.revenue))}
-      ${shareCell(v.cost, tot.cost)}
-      ${shareCell(v.revenue, tot.revenue)}
+      ${shareCellChg(v.cost, T.cost, q.cost, P.cost)}
+      ${shareCellChg(v.revenue, T.revenue, q.revenue, P.revenue)}
     </tr>`;
   };
 
@@ -2950,32 +2969,50 @@ async function renderGads(s, e, src='csv') {
       window._pmaxChart.update();
     };
 
+    const sumG = m => Object.values(m).reduce((a,v)=>{
+      const o = {...a};
+      for (const k in v) o[k] = (o[k]||0) + v[k];
+      return o;
+    }, emptyG());
+
+    // ① 整體管道成效
     const pc = byCh(s, e), pp = byCh(ps, pe);
-    const pTot = Object.values(pc).reduce((a,v)=>({cost:a.cost+v.cost, revenue:a.revenue+v.revenue}), {cost:0,revenue:0});
-    const savedTot = tot.cost, savedRev = tot.revenue;
-    tot.cost = pTot.cost; tot.revenue = pTot.revenue;
+    const pTot = sumG(pc), pPrevTot = sumG(pp);
     document.getElementById('gadsPmaxBody').innerHTML =
       Object.entries(pc).sort((a,b)=>b[1].cost-a[1].cost)
-        .map(([k,v]) => gadsRow(k, v, pp[k])).join('')
+        .map(([k,v]) => gadsRow(k, v, pp[k], pTot, pPrevTot)).join('')
       || '<tr><td colspan="14" class="loading-cell">此期間無 PMax 資料</td></tr>';
 
-    const byCamp2 = (lo,hi) => {
+    // ② 兩檔活動（可展開看各自的管道）
+    const byCampCh = (lo,hi) => {
       const m = {};
       pr.filter(r => r.date>=lo && r.date<=hi).forEach(r => {
-        if (!m[r.campaign]) m[r.campaign] = emptyG();
-        const a = m[r.campaign];
+        const cn = r.campaign, ch = r.channel_label || r.channel;
+        if (!m[cn]) m[cn] = {};
+        if (!m[cn][ch]) m[cn][ch] = emptyG();
+        const a = m[cn][ch];
         a.cost+=r.cost; a.imp+=r.imp; a.clicks+=r.clicks;
         a.atc+=r.atc; a.purchase+=r.purchase; a.revenue+=r.revenue;
       });
       return m;
     };
-    const cc = byCamp2(s, e), cp = byCamp2(ps, pe);
-    document.getElementById('gadsPmaxCampBody').innerHTML =
-      Object.entries(cc).sort((a,b)=>b[1].cost-a[1].cost)
-        .map(([k,v]) => gadsRow(shortName(k), v, cp[k])).join('')
-      || '<tr><td colspan="14" class="loading-cell">此期間無 PMax 資料</td></tr>';
+    const ccc = byCampCh(s, e), ccp = byCampCh(ps, pe);
+    const campTot  = Object.fromEntries(Object.entries(ccc).map(([k,v])=>[k, sumG(v)]));
+    const campPrev = Object.fromEntries(Object.entries(ccp).map(([k,v])=>[k, sumG(v)]));
 
-    tot.cost = savedTot; tot.revenue = savedRev;
+    document.getElementById('gadsPmaxCampBody').innerHTML =
+      Object.entries(campTot).sort((a,b)=>b[1].cost-a[1].cost).map(([cn,v], i) => {
+        const id = 'pm'+i;
+        const q  = campPrev[cn] || emptyG();
+        let html = gadsRow(shortName(cn), v, q, pTot, pPrevTot, id);
+        const chs = ccc[cn] || {}, chp = ccp[cn] || {};
+        html += Object.entries(chs).sort((a,b)=>b[1].cost-a[1].cost).map(([ch, cv]) =>
+          gadsRow(ch, cv, chp[ch], v, q).replace(
+            '<tr>', `<tr class="pmxdetail-${id}" style="display:none;background:#fafbfc;font-size:12px">`)
+        ).join('');
+        return html;
+      }).join('')
+      || '<tr><td colspan="14" class="loading-cell">此期間無 PMax 資料</td></tr>';
   }
 
   document.getElementById('lastUpdate').textContent = new Date().toLocaleString('zh-TW');
