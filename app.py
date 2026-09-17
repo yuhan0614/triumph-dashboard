@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from meta_api import ACCOUNTS, get_insights, BASE_URL
 from google_ads_api import get_campaign_daily, get_pmax_channels
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension
+from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric, Dimension, FilterExpression, Filter
 from google.oauth2.credentials import Credentials
 
 load_dotenv()
@@ -269,6 +269,13 @@ def _fetch_ga4_sources(since, until):
             Metric(name="ecommercePurchases"),
             Metric(name="totalRevenue"),
         ],
+        # 只要 SOURCE_MAP 裡的來源，在 GA4 那端就先篩掉，長區間才不會拉回幾萬列再丟掉
+        dimension_filter=FilterExpression(filter=Filter(
+            field_name="sessionSource",
+            in_list_filter=Filter.InListFilter(
+                values=sorted({src for src, _ in SOURCE_MAP}), case_sensitive=False),
+        )),
+        limit=250000,
     )
     resp = ga4_client().run_report(req)
     by_channel = {}

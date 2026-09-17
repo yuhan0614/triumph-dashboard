@@ -88,7 +88,34 @@ def _parse(row, level, account_name, account_id):
     return result
 
 
+CHUNK_DAYS = 31
+
+
+def _date_chunks(since, until, days=CHUNK_DAYS):
+    from datetime import datetime, timedelta
+    a = datetime.strptime(since, "%Y-%m-%d").date()
+    b = datetime.strptime(until, "%Y-%m-%d").date()
+    while a <= b:
+        c = min(a + timedelta(days=days - 1), b)
+        yield a.isoformat(), c.isoformat()
+        a = c + timedelta(days=1)
+
+
 def get_insights(account_id, since, until, level="account", time_increment="all_days", token=None, breakdowns=None):
+    # Meta 對「逐日 × 廣告活動」的長區間會直接拒絕（Please reduce the amount of data），拆月平行抓再接起來
+    if time_increment == "1":
+        from datetime import datetime
+        span = (datetime.strptime(until, "%Y-%m-%d") - datetime.strptime(since, "%Y-%m-%d")).days + 1
+        if span > CHUNK_DAYS:
+            from concurrent.futures import ThreadPoolExecutor
+            chunks = list(_date_chunks(since, until))
+            with ThreadPoolExecutor(max_workers=min(6, len(chunks))) as ex:
+                parts = list(ex.map(lambda c: _get_insights_one(account_id, c[0], c[1], level, time_increment, token, breakdowns), chunks))
+            return [r for part in parts for r in part]
+    return _get_insights_one(account_id, since, until, level, time_increment, token, breakdowns)
+
+
+def _get_insights_one(account_id, since, until, level, time_increment, token, breakdowns):
     account_name = next((k for k, v in ACCOUNTS.items() if v == account_id), account_id)
     url = f"{BASE_URL}/act_{account_id}/insights"
     params = {
